@@ -5,7 +5,8 @@ import { CartProvider } from "@/context/CartContext";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import MobileHeader from "@/components/MobileHeader";
 import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer"; // <--- 1. Import Footer
+import Footer from "@/components/Footer";
+import FloatingContact from "@/components/FloatingContact"; // Import nút Gọi/Zalo nổi
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -23,16 +24,21 @@ export default function RootLayout({
     <html lang="vi">
       <body className={inter.className}>
         <CartProvider>
+          {/* Header Mobile cố định */}
           <MobileHeader />
+          
+          {/* Navbar Desktop Sticky */}
           <div className="hidden md:block sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm">
             <Navbar />
           </div>
 
+          {/* Nội dung chính */}
           {children}
 
-          {/* 2. Thêm Footer vào cuối trang */}
+          {/* Nút Gọi/Zalo nổi (Hiển thị đè lên mọi thứ) */}
+          <FloatingContact />
+
           <Footer />
-          
           <MobileBottomNav />
         </CartProvider>
       </body>

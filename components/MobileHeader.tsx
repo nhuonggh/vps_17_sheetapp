@@ -1,18 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import { ShoppingCart, Search, Menu, Sheet, X, ChevronDown, User } from 'lucide-react';
+import { ShoppingCart, Search, Menu, Sheet, X, ChevronDown } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useEffect } from 'react';
+import { User } from '@supabase/supabase-js'; // <-- THÊM MỚI: Import kiểu dữ liệu User chuẩn
 
 export default function MobileHeader() {
   const { totalItems } = useCart();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  
+  // SỬA LỖI: Thay <any> bằng <User | null>
+  const [user, setUser] = useState<User | null>(null);
 
-  // Lấy thông tin user để hiển thị trong Menu
   useEffect(() => {
     const getUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -21,7 +22,6 @@ export default function MobileHeader() {
     getUser();
   }, []);
 
-  // Danh sách Menu cấu trúc theo yêu cầu của bạn
   const menuGroups = [
     {
       title: "KHÓA HỌC ONLINE",
@@ -53,9 +53,9 @@ export default function MobileHeader() {
 
   return (
     <>
-      {/* 1. HEADER CHÍNH (STICKY) */}
-      <header className="md:hidden sticky top-0 left-0 right-0 bg-white z-40 shadow-sm border-b border-gray-100">
-        <div className="flex justify-between items-center px-4 h-14">
+      {/* 1. HEADER CỐ ĐỊNH (FIXED) */}
+      <header className="md:hidden fixed top-0 left-0 right-0 bg-white z-[100] shadow-sm border-b border-gray-100 h-14">
+        <div className="flex justify-between items-center px-4 h-full">
           
           {/* Logo */}
           <Link href="/" className="flex items-center gap-1.5">
@@ -69,39 +69,36 @@ export default function MobileHeader() {
 
           {/* Action Icons */}
           <div className="flex items-center gap-4">
-             {/* Nút tìm kiếm */}
              <button className="text-gray-500">
                 <Search className="w-5 h-5" />
              </button>
 
-             {/* Nút Giỏ hàng */}
-             <Link href="/cart" className="relative text-gray-500">
-                <ShoppingCart className="w-5 h-5" />
+             {/* Nút Giỏ hàng với số lượng màu đỏ */}
+             <Link href="/cart" className="relative text-gray-600">
+                <ShoppingCart className="w-6 h-6" />
                 {totalItems > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold w-3.5 h-3.5 flex items-center justify-center rounded-full">
+                  <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full ring-2 ring-white animate-pulse">
                     {totalItems}
                   </span>
                 )}
              </Link>
 
-             {/* Nút Menu 3 gạch */}
              <button onClick={() => setIsMenuOpen(true)} className="text-gray-700">
                 <Menu className="w-6 h-6" />
              </button>
           </div>
         </div>
       </header>
+      
+      {/* Spacer để nội dung không bị Header che mất */}
+      <div className="md:hidden h-14 w-full"></div>
 
-      {/* 2. SIDEBAR MENU (TRƯỢT TỪ PHẢI SANG) */}
+      {/* 2. SIDEBAR MENU */}
       {isMenuOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-            {/* Lớp nền mờ */}
-            <div className="absolute inset-0 bg-black/50" onClick={() => setIsMenuOpen(false)}></div>
-            
-            {/* Nội dung Menu */}
+        <div className="fixed inset-0 z-[110] md:hidden">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsMenuOpen(false)}></div>
             <div className="absolute top-0 right-0 w-[85%] h-full bg-white shadow-2xl overflow-y-auto animate-in slide-in-from-right duration-300">
-                
-                {/* Header của Menu */}
+                {/* Header Menu */}
                 <div className="p-4 bg-emerald-600 text-white flex justify-between items-start">
                     <div>
                         {user ? (
@@ -133,7 +130,7 @@ export default function MobileHeader() {
                 </div>
 
                 {/* Danh sách Link */}
-                <div className="p-4 space-y-6">
+                <div className="p-4 space-y-6 pb-24">
                     {menuGroups.map((group, index) => (
                         <div key={index}>
                             <h4 className="text-xs font-bold text-gray-400 uppercase mb-3 tracking-wider">{group.title}</h4>
@@ -152,11 +149,9 @@ export default function MobileHeader() {
                             </div>
                         </div>
                     ))}
-
-                    <div className="pt-4 border-t border-gray-100">
-                        <h4 className="text-xs font-bold text-gray-400 uppercase mb-3 tracking-wider">HỖ TRỢ</h4>
-                        <Link href="/contact" className="block p-3 text-sm text-gray-600">Liên hệ & Góp ý</Link>
-                        <Link href="/policy" className="block p-3 text-sm text-gray-600">Chính sách bảo mật</Link>
+                    
+                    {/* Nút đăng xuất */}
+                     <div className="pt-4 border-t border-gray-100">
                         {user && (
                             <button 
                                 onClick={async () => {
@@ -170,7 +165,6 @@ export default function MobileHeader() {
                         )}
                     </div>
                 </div>
-
             </div>
         </div>
       )}
