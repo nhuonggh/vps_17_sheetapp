@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Bạn có thể thêm custom css ở dưới, nhưng hiện tại chưa cần */
+body {
+  background-color: #f8fafc; /* Màu nền xám rất nhạt cho dịu mắt */
+}
