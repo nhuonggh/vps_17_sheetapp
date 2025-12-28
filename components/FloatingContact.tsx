@@ -3,36 +3,106 @@
 import Link from 'next/link';
 import { Phone } from 'lucide-react';
 import { APP_CONFIG } from '@/lib/constants';
+import { useState } from 'react';
+import ConsultationModal from './ConsultationModal'; // Import Form Modal
 
-// Icon Zalo (để dùng chung)
-const ZaloIcon = () => (
-  <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-6 h-6">
-    <path d="M42 16C42 16.8837 41.8796 17.7428 41.6521 18.567C43.1416 19.8252 44.0863 21.6444 44.0863 23.6706C44.0863 27.5756 41.0558 30.7712 37.2435 31.2588C36.6534 33.7297 34.4533 35.5925 31.815 35.5925C31.2676 35.5925 30.7381 35.5132 30.2372 35.3653L26.3768 37.9103C25.7972 38.2925 25.0441 37.8183 25.1326 37.1306L25.5684 33.7436C25.545 33.7445 25.5215 33.7449 25.498 33.7449C24.7925 33.7449 24.1165 33.6339 23.4862 33.4285C22.6841 33.8821 21.761 34.1412 20.7788 34.1412C16.8376 34.1412 13.642 31.2163 13.642 27.6087C13.642 27.352 13.6599 27.0988 13.6946 26.8496C12.1818 25.6105 11.2157 23.7783 11.2157 21.7345C11.2157 17.7942 14.5097 14.6 18.5732 14.6C19.141 14.6 19.6917 14.6644 20.2223 14.7865C20.8406 14.6649 21.4828 14.6 22.1437 14.6C22.9566 14.6 23.7383 14.698 24.4795 14.881C26.0461 11.8385 29.3551 9.8 33.1557 9.8C38.0396 9.8 42 13.2575 42 17.5229V16Z" fill="white"/>
-    <path d="M25.498 33.7449C28.9171 33.7449 31.6888 31.2934 31.6888 28.2691C31.6888 25.2449 28.9171 22.7934 25.498 22.7934C22.0789 22.7934 19.3072 25.2449 19.3072 28.2691C19.3072 31.2934 22.0789 33.7449 25.498 33.7449Z" fill="#0068FF"/>
+/* --- ICON ASSETS --- */
+const ZaloImg = () => (
+  // eslint-disable-next-line @next/next/no-img-element
+  <img 
+    src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Icon_of_Zalo.svg/120px-Icon_of_Zalo.svg.png" 
+    alt="Zalo" 
+    className="w-full h-full object-contain"
+  />
+);
+
+const MessengerIcon = () => (
+  <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+     <path d="M14 0C6.18247 0 0 5.90824 0 13.1977C0 17.3364 2.11576 21.0341 5.42082 23.3611V28L10.3725 25.2155C11.5369 25.5458 12.7485 25.7271 14 25.7271C21.8175 25.7271 28 19.8188 28 12.5294C28 5.23999 21.8175 0 14 0ZM15.4608 17.4729L11.6667 13.3447L4.23917 17.4729L12.3925 8.65529L16.3333 12.7835L23.6075 8.65529L15.4608 17.4729Z" fill="white"/>
   </svg>
 );
 
 export default function FloatingContact() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   return (
-    <div className="fixed bottom-20 right-4 z-40 flex flex-col gap-3 md:hidden">
-      
-      {/* Nút Gọi Điện */}
-      <Link 
-        href={`tel:${APP_CONFIG.contact.phone.replace(/\s/g, '')}`}
-        className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform animate-bounce"
-      >
-        <Phone className="w-6 h-6 text-white" />
-      </Link>
+    <>
+      {/* ================= GIAO DIỆN DESKTOP (Hiện chữ) ================= */}
+      <div className="hidden md:flex fixed bottom-10 right-6 z-50 flex-col gap-3 items-end">
+        
+        {/* 1. NÚT ĐĂNG KÝ TƯ VẤN (MỚI) */}
+        <button 
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 bg-white text-red-600 px-5 py-2.5 rounded-full shadow-lg border-2 border-white hover:scale-105 transition-transform group animate-bounce"
+        >
+            <div className="font-bold text-sm uppercase tracking-wide drop-shadow-sm">Đăng ký tư vấn</div>
+        </button>
 
-      {/* Nút Zalo */}
-      <Link 
-        href={APP_CONFIG.social.zalo}
-        target="_blank"
-        className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
-      >
-        <ZaloIcon />
-      </Link>
+        {/* 2. Nút Chat Fanpage */}
+        <Link 
+            href={APP_CONFIG.social.messenger}
+            target="_blank"
+            className="flex items-center gap-3 bg-[#0084FF] text-white pl-4 pr-2 py-2 rounded-full shadow-lg hover:scale-105 transition-transform group"
+        >
+            <span className="font-bold text-sm">Chat Facebook</span>
+            <div className="w-10 h-10 bg-white/20 rounded-full p-2">
+                <MessengerIcon />
+            </div>
+        </Link>
 
-    </div>
+        {/* 3. Nút Chat Zalo OA */}
+        <Link 
+            href={APP_CONFIG.social.zaloOA}
+            target="_blank"
+            className="flex items-center gap-3 bg-white text-blue-600 pl-4 pr-2 py-2 rounded-full shadow-xl border border-blue-100 hover:scale-105 transition-transform group"
+        >
+            <div className="text-right">
+                <div className="font-bold text-sm text-gray-800">Tư vấn giải pháp</div>
+                <div className="text-xs text-blue-600 font-medium">Chat Zalo ngay</div>
+            </div>
+            <div className="w-10 h-10 rounded-full overflow-hidden">
+                <ZaloImg />
+            </div>
+        </Link>
+
+      </div>
+
+
+      {/* ================= GIAO DIỆN MOBILE (Chỉ hiện Icon) ================= */}
+      <div className="md:hidden fixed bottom-24 right-4 z-[80] flex flex-col gap-3">
+        
+        {/* 1. Gọi điện */}
+        <Link 
+          href={`tel:${APP_CONFIG.contact.phone.replace(/\s/g, '')}`}
+          className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform animate-bounce"
+        >
+          <Phone className="w-6 h-6 text-white fill-current" />
+        </Link>
+
+        {/* 2. Messenger */}
+        <Link 
+            href={APP_CONFIG.social.messenger}
+            target="_blank"
+            className="w-12 h-12 bg-[#0084FF] rounded-full flex items-center justify-center shadow-lg p-2.5"
+        >
+            <MessengerIcon />
+        </Link>
+
+        {/* 3. Zalo */}
+        <Link 
+          href={APP_CONFIG.social.zaloOA}
+          target="_blank"
+          className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg overflow-hidden border border-gray-100"
+        >
+          <div className="w-full h-full"> 
+             <ZaloImg />
+          </div>
+        </Link>
+
+      </div>
+
+      {/* MODAL FORM */}
+      <ConsultationModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+    </>
   );
 }
