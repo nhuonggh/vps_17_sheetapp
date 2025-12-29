@@ -1,43 +1,52 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { CheckCircle2, Share2, Clock, FileText, Users, MonitorPlay, Calendar, Laptop, Wifi, UserCheck, Copy, Mail, Send } from 'lucide-react';
+import { 
+  CheckCircle2, Laptop, Wifi, UserCheck, Calendar, 
+  Clock, FileText, MonitorPlay, Users, Share2, Copy, Mail, Send 
+} from 'lucide-react';
 import ProductActions from '@/components/ProductActions';
 import CourseTabs from '@/components/CourseTabs';
 import ProductImageSlider from '@/components/ProductImageSlider';
 
-// 1. ĐỊNH NGHĨA LẠI INTERFACE ĐẦY ĐỦ
+// 1. ĐỊNH NGHĨA INTERFACE
 interface Lesson { id: number; title: string; duration: string; is_preview: boolean; sort_order: number; }
 interface Chapter { id: number; title: string; lessons: Lesson[]; sort_order: number; }
 
-// Thêm Interface Instructor rõ ràng
-interface Instructor {
-  id: number;
-  name: string;
-  bio: string;
-  avatar_url: string;
-  rating: number;
-  title: string;
+interface Instructor { 
+  id: number; 
+  name: string; 
+  bio: string; 
+  avatar_url: string; 
+  rating: number; 
+  title: string; 
 }
 
 interface Product {
   id: number; name: string; slug: string; price: number; old_price: number | null;
-  thumbnail_url: string; 
-  gallery: string[];
+  thumbnail_url: string; gallery: string[];
   description: string; content_html: string; total_duration: string;
   benefits: string[]; outcomes: string[]; requirements: string[];
   chapters: Chapter[];
-  instructor: Instructor; // <--- Sửa từ any thành Instructor
+  instructor: Instructor; 
   categories: { name: string; slug: string } | null;
 }
+
 interface RelatedPost { id: number; title: string; slug: string; thumbnail_url: string; created_at: string; }
 interface RelatedCourse { id: number; name: string; slug: string; price: number; thumbnail_url: string; }
 
+// 2. HÀM LẤY DỮ LIỆU
 async function getProduct(slug: string): Promise<Product | null> {
   const { data, error } = await supabase
     .from('products')
-    .select(`*, categories (name, slug), instructor:instructors(*), chapters:chapters(*, lessons(*))`)
-    .eq('slug', slug).single();
+    .select(`
+      *,
+      categories (name, slug),
+      instructor:instructors(*),
+      chapters:chapters(*, lessons(*))
+    `)
+    .eq('slug', slug)
+    .single();
 
   if (error || !data) return null;
 
@@ -47,6 +56,7 @@ async function getProduct(slug: string): Promise<Product | null> {
       if (ch.lessons) ch.lessons.sort((a: Lesson, b: Lesson) => (a.sort_order || 0) - (b.sort_order || 0));
     });
   }
+  
   return data as unknown as Product;
 }
 
@@ -68,9 +78,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const relatedCourses = await getRelatedCourses(product.id);
   const formatPrice = (price: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
 
-  const productImages = product.gallery && product.gallery.length > 0 
-    ? product.gallery 
-    : [product.thumbnail_url];
+  const productImages = product.gallery && product.gallery.length > 0 ? product.gallery : [product.thumbnail_url];
 
   return (
     <main className="min-h-screen bg-gray-50 pb-20 pt-6">
@@ -85,14 +93,17 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
             <div className="lg:col-span-2 space-y-8">
                 
+                {/* Mobile Hero */}
                 <div className="lg:hidden bg-white p-4 rounded-2xl shadow-sm mb-4">
                     <h1 className="text-2xl font-bold text-gray-900 mb-2">{product.name}</h1>
                     <div className="text-red-600 font-bold text-2xl mb-4">{formatPrice(product.price)}</div>
                     <ProductActions product={product} />
                 </div>
 
+                {/* Slider */}
                 <ProductImageSlider images={productImages} alt={product.name} />
 
+                {/* Giới thiệu */}
                 <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100">
                     <h3 className="text-lg font-bold text-gray-900 mb-4 border-l-4 border-emerald-500 pl-3">Giới thiệu khóa học</h3>
                     <div 
@@ -101,9 +112,10 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                     />
                 </div>
 
-                {/* Truyền product (đã có instructor typed) vào CourseTabs */}
+                {/* TAB THÔNG TIN */}
                 <CourseTabs product={product} />
 
+                {/* Các section khác... */}
                 <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100">
                     <h3 className="text-lg font-bold text-gray-900 mb-6 uppercase border-l-4 border-emerald-500 pl-3">Giá trị nhận được</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -146,6 +158,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                     </div>
                 </div>
 
+                {/* Bài viết liên quan */}
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                     <h3 className="text-lg font-bold text-gray-900 mb-4">Bài viết liên quan</h3>
                     <div className="space-y-4">
@@ -163,6 +176,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                 </div>
             </div>
 
+            {/* Sidebar Phải */}
             <div className="lg:col-span-1 space-y-6 lg:sticky lg:top-24">
                 <div className="bg-white rounded-2xl shadow-xl border border-emerald-100 overflow-hidden hidden lg:block">
                     <div className="p-6 border-b border-gray-100">
@@ -173,7 +187,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                         <ProductActions product={product} />
                     </div>
                     <div className="p-6 bg-gray-50/50 space-y-4 text-sm text-gray-600">
-                        <div className="flex justify-between border-b border-dashed border-gray-200 pb-2"><span className="flex items-center gap-2"><Clock className="w-4 h-4 text-gray-400" /> Thời lượng</span><span className="font-bold text-gray-900">{product.total_duration || '26 giờ'}</span></div>
+                        <div className="flex justify-between border-b border-dashed border-gray-200 pb-2"><span className="flex items-center gap-2"><Clock className="w-4 h-4 text-gray-400" /> Thời lượng</span><span className="font-bold text-gray-900">{product.total_duration || 'Cập nhật'}</span></div>
                         <div className="flex justify-between border-b border-dashed border-gray-200 pb-2"><span className="flex items-center gap-2"><FileText className="w-4 h-4 text-gray-400" /> Số bài học</span><span className="font-bold text-gray-900">{product.chapters?.reduce((a, b) => a + (b.lessons?.length||0), 0)} bài</span></div>
                         <div className="flex justify-between border-b border-dashed border-gray-200 pb-2"><span className="flex items-center gap-2"><MonitorPlay className="w-4 h-4 text-gray-400" /> Hình thức</span><span className="font-bold text-gray-900">Online Video</span></div>
                         <div className="flex justify-between"><span className="flex items-center gap-2"><Users className="w-4 h-4 text-gray-400" /> Hỗ trợ</span><span className="font-bold text-gray-900">Zalo nhóm kín</span></div>
