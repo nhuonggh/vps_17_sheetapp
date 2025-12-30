@@ -1,12 +1,25 @@
 'use client';
 
 import Link from 'next/link';
-import { ShoppingCart, User as UserIcon, ChevronDown, Search } from 'lucide-react';
+import { ShoppingCart, User as UserIcon, ChevronDown, Search, ChevronRight } from 'lucide-react'; 
 import { Sheet } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { useCart } from '@/context/CartContext';
+
+// Định nghĩa kiểu dữ liệu cho Menu đa cấp
+type MenuItem = {
+  name: string;
+  href: string;
+  children?: MenuItem[]; 
+};
+
+type MenuSection = {
+  title: string;
+  href: string;
+  submenu: MenuItem[]; 
+};
 
 export default function Navbar() {
   const [user, setUser] = useState<User | null>(null);
@@ -22,8 +35,8 @@ export default function Navbar() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Cập nhật Menu đúng link và query param để active tab
-  const menuItems = [
+  // --- CẤU HÌNH MENU DỮ LIỆU (CẬP NHẬT MỚI NHẤT) ---
+  const menuItems: MenuSection[] = [
     { 
       title: "Khóa học", 
       href: "/categories", 
@@ -39,9 +52,80 @@ export default function Navbar() {
       title: "Dịch vụ", 
       href: "/services", 
       submenu: [
-        { name: "Zalo Mini App", href: "/services/zalo" }, 
-        { name: "AppSheet", href: "/services/appsheet" }, 
-        { name: "Web App", href: "/services/web" }
+        // 1. ZALO MINI APP
+        { 
+          name: "Zalo Mini App", 
+          href: "/services/zalo",
+          children: [
+            { name: "Nhà hàng", href: "/services/zalo?industry=Nhà hàng & F&B" },
+            { name: "Khách sạn, FarmStay", href: "/services/zalo?industry=Khách sạn" },
+            { name: "Quán Cafe", href: "/services/zalo?industry=Nhà hàng & F&B" },
+            { name: "Cửa hàng quần áo", href: "/services/zalo?industry=Bán lẻ" },
+            { name: "Cửa hàng sách", href: "/services/zalo?industry=Bán lẻ" },
+            { name: "Bán lẻ (F&B)", href: "/services/zalo?industry=Nhà hàng & F&B" },
+            { name: "Phòng Gym/Spa", href: "/services/zalo?industry=Spa & Làm đẹp" },
+            { name: "Phòng khám", href: "/services/zalo?industry=Y tế" },
+            { name: "Hành chính công", href: "/services/zalo?industry=Hành chính" },
+            { name: "Giáo dục", href: "/services/zalo?industry=Giáo dục" },
+            { name: "Xây dựng", href: "/services/zalo?industry=Xây dựng" },
+          ]
+        },
+        // 2. NOCODE APP
+        { 
+          name: "Nocode App - AppSheet", 
+          href: "/services/appsheet",
+          children: [
+            { name: "Trung tâm gia sư", href: "/services/appsheet?industry=Giáo dục" },
+            { name: "Trung tâm lái xe", href: "/services/appsheet?industry=Giáo dục" },
+            { name: "Sản xuất", href: "/services/appsheet?industry=Sản xuất" },
+            { name: "Tài chính - Ngân hàng", href: "/services/appsheet?industry=Tài chính" },
+            { name: "Xây dựng", href: "/services/appsheet?industry=Xây dựng" },
+          ]
+        },
+        { name: "Nocode App - NocodeBase", href: "/services/nocodebase" },
+        
+        // 3. WEB APP
+        { 
+          name: "Ứng dụng Web", 
+          href: "/services/web",
+          children: [
+            { name: "Bán lẻ", href: "/services/web?industry=Bán lẻ" },
+            { name: "Nhà hàng, Khách sạn", href: "/services/web?industry=Nhà hàng & F&B" },
+            { name: "Bất động sản", href: "/services/web?industry=Bất động sản" },
+          ]
+        },
+
+        // 4. PC APP
+        { 
+          name: "Ứng dụng trên PC", 
+          href: "/services/pc",
+          children: [
+            { name: "Xây dựng", href: "/services/pc?industry=Xây dựng" },
+            { name: "Tài chính", href: "/services/pc?industry=Tài chính" },
+          ]
+        },
+
+        // 5. GOOGLE SHEET
+        { 
+          name: "Tiện ích Google Sheet", 
+          href: "/services/googlesheet",
+          children: [
+            { name: "Nhân sự (HR)", href: "/services/googlesheet?industry=Nhân sự" },
+            { name: "Chấm công", href: "/services/googlesheet?industry=Nhân sự" },
+            { name: "Sản xuất", href: "/services/googlesheet?industry=Sản xuất" },
+            { name: "Tài chính", href: "/services/googlesheet?industry=Tài chính" },
+          ]
+        },
+
+        // 6. AI AUTOMATION
+        { 
+          name: "AI Automation", 
+          href: "/services/automation",
+          children: [
+            { name: "Giải pháp n8n", href: "/services/automation/n8n" },
+            { name: "Giải pháp Make.com", href: "/services/automation/make" },
+          ]
+        }
       ] 
     },
     { 
@@ -72,12 +156,37 @@ export default function Navbar() {
                 {item.title} <ChevronDown className="w-4 h-4 transition-transform group-hover:rotate-180" />
               </Link>
               
-              <div className="absolute top-full left-0 w-56 bg-white shadow-xl rounded-xl border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0">
-                <div className="p-2">
+              {/* DROPDOWN CẤP 2 */}
+              <div className="absolute top-full left-0 w-64 bg-white shadow-xl rounded-xl border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0 pb-2">
+                <div className="p-2 space-y-1">
                   {item.submenu.map((sub) => (
-                    <Link key={sub.name} href={sub.href} className="block px-4 py-2.5 text-sm text-gray-600 hover:bg-emerald-50 hover:text-emerald-600 rounded-lg">
-                      {sub.name}
-                    </Link>
+                    <div key={sub.name} className="relative group/sub"> {/* group/sub để xử lý hover cấp 3 */}
+                        
+                        <Link 
+                            href={sub.href} 
+                            className="flex items-center justify-between px-4 py-2.5 text-sm text-gray-600 hover:bg-emerald-50 hover:text-emerald-600 rounded-lg"
+                        >
+                            <span>{sub.name}</span>
+                            {/* Nếu có con thì hiện mũi tên phải */}
+                            {sub.children && <ChevronRight className="w-4 h-4 text-gray-400" />}
+                        </Link>
+
+                        {/* DROPDOWN CẤP 3 (FLYOUT) */}
+                        {sub.children && (
+                            <div className="absolute left-full top-0 w-60 bg-white shadow-xl rounded-xl border border-gray-100 opacity-0 invisible group-hover/sub:opacity-100 group-hover/sub:visible transition-all duration-200 ml-2 p-2">
+                                {sub.children.map((child) => (
+                                    <Link 
+                                        key={child.name} 
+                                        href={child.href} 
+                                        className="block px-4 py-2 text-sm text-gray-600 hover:bg-emerald-50 hover:text-emerald-600 rounded-lg truncate"
+                                        title={child.name}
+                                    >
+                                        {child.name}
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                   ))}
                 </div>
               </div>
@@ -91,7 +200,7 @@ export default function Navbar() {
             <div className="relative w-full group">
                 <input 
                     type="text" 
-                    placeholder="Tìm khóa học, template..." 
+                    placeholder="Tìm kiếm..." 
                     className="w-full bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-full pl-4 pr-10 py-2.5 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
                 />
                 <button className="absolute right-0 top-0 h-full px-3 text-gray-400 group-focus-within:text-emerald-600">

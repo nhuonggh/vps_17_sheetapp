@@ -2,26 +2,16 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { 
-  CheckCircle2, Laptop, Wifi, UserCheck, Calendar, 
-  Clock, FileText, MonitorPlay, Users, Share2, Copy, Mail, Send 
+  CheckCircle2, Laptop, Wifi, UserCheck, Calendar, Clock, FileText, MonitorPlay, Users, Share2, Copy, Mail, Send, Smartphone, ShieldCheck, Rocket, Tag, Monitor
 } from 'lucide-react';
 import ProductActions from '@/components/ProductActions';
 import CourseTabs from '@/components/CourseTabs';
 import ProductImageSlider from '@/components/ProductImageSlider';
 
-// 1. ĐỊNH NGHĨA INTERFACE
+// Interfaces (Giữ nguyên)
 interface Lesson { id: number; title: string; duration: string; is_preview: boolean; sort_order: number; }
 interface Chapter { id: number; title: string; lessons: Lesson[]; sort_order: number; }
-
-interface Instructor { 
-  id: number; 
-  name: string; 
-  bio: string; 
-  avatar_url: string; 
-  rating: number; 
-  title: string; 
-}
-
+interface Instructor { id: number; name: string; bio: string; avatar_url: string; rating: number; title: string; }
 interface Product {
   id: number; name: string; slug: string; price: number; old_price: number | null;
   thumbnail_url: string; gallery: string[];
@@ -30,44 +20,24 @@ interface Product {
   chapters: Chapter[];
   instructor: Instructor; 
   categories: { name: string; slug: string } | null;
+  type: string;
+  industry: string;
 }
-
 interface RelatedPost { id: number; title: string; slug: string; thumbnail_url: string; created_at: string; }
-interface RelatedCourse { id: number; name: string; slug: string; price: number; thumbnail_url: string; }
+interface RelatedProduct { id: number; name: string; slug: string; price: number; thumbnail_url: string; type: string; }
 
-// 2. HÀM LẤY DỮ LIỆU
+// Các hàm fetch (Giữ nguyên)
 async function getProduct(slug: string): Promise<Product | null> {
-  const { data, error } = await supabase
-    .from('products')
-    .select(`
-      *,
-      categories (name, slug),
-      instructor:instructors(*),
-      chapters:chapters(*, lessons(*))
-    `)
-    .eq('slug', slug)
-    .single();
-
+  const { data, error } = await supabase.from('products').select(`*, categories (name, slug), instructor:instructors(*), chapters:chapters(*, lessons(*))`).eq('slug', slug).single();
   if (error || !data) return null;
-
   if (data.chapters) {
     data.chapters.sort((a: Chapter, b: Chapter) => (a.sort_order || 0) - (b.sort_order || 0));
-    data.chapters.forEach((ch: Chapter) => {
-      if (ch.lessons) ch.lessons.sort((a: Lesson, b: Lesson) => (a.sort_order || 0) - (b.sort_order || 0));
-    });
+    data.chapters.forEach((ch: Chapter) => { if (ch.lessons) ch.lessons.sort((a: Lesson, b: Lesson) => (a.sort_order || 0) - (b.sort_order || 0)); });
   }
-  
   return data as unknown as Product;
 }
-
-async function getRelatedPosts(): Promise<RelatedPost[]> {
-    const { data } = await supabase.from('posts').select('*').limit(3).order('created_at', { ascending: false });
-    return (data as RelatedPost[]) || [];
-}
-async function getRelatedCourses(currentId: number): Promise<RelatedCourse[]> {
-    const { data } = await supabase.from('products').select('*').neq('id', currentId).limit(3);
-    return (data as RelatedCourse[]) || [];
-}
+async function getRelatedPosts(): Promise<RelatedPost[]> { const { data } = await supabase.from('posts').select('*').limit(3).order('created_at', { ascending: false }); return (data as RelatedPost[]) || []; }
+async function getRelatedProducts(currentId: number, currentType: string): Promise<RelatedProduct[]> { const targetType = currentType === 'course' ? 'service' : 'course'; const { data } = await supabase.from('products').select('*').eq('type', targetType).limit(5); return (data as RelatedProduct[]) || []; }
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -75,24 +45,30 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   if (!product) notFound();
 
   const relatedPosts = await getRelatedPosts();
-  const relatedCourses = await getRelatedCourses(product.id);
+  const relatedProducts = await getRelatedProducts(product.id, product.type);
   const formatPrice = (price: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
-
   const productImages = product.gallery && product.gallery.length > 0 ? product.gallery : [product.thumbnail_url];
+
+  const isService = product.type === 'service';
+  const relatedTitle = isService ? 'Khóa học liên quan' : 'Dịch vụ nên dùng';
+  const relatedLabel = isService ? 'KHÓA HỌC' : 'DỊCH VỤ';
+  const relatedColor = isService ? 'bg-red-500' : 'bg-blue-500';
 
   return (
     <main className="min-h-screen bg-gray-50 pb-20 pt-6">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
+        {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-gray-500 mb-6 overflow-x-auto whitespace-nowrap scrollbar-hide">
             <Link href="/" className="hover:text-emerald-600">Trang chủ</Link><span>/</span>
-            <Link href="/categories" className="hover:text-emerald-600">Khóa học</Link><span>/</span>
+            <Link href={isService ? '/services' : '/categories'} className="hover:text-emerald-600">{isService ? 'Dịch vụ' : 'Khóa học'}</Link><span>/</span>
             <span className="text-gray-900 font-medium">{product.name}</span>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            
+            {/* --- CỘT TRÁI (CONTENT) --- */}
             <div className="lg:col-span-2 space-y-8">
-                
                 {/* Mobile Hero */}
                 <div className="lg:hidden bg-white p-4 rounded-2xl shadow-sm mb-4">
                     <h1 className="text-2xl font-bold text-gray-900 mb-2">{product.name}</h1>
@@ -100,26 +76,26 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                     <ProductActions product={product} />
                 </div>
 
-                {/* Slider */}
                 <ProductImageSlider images={productImages} alt={product.name} />
 
-                {/* Giới thiệu */}
+                {/* Giới thiệu ngắn */}
                 <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4 border-l-4 border-emerald-500 pl-3">Giới thiệu khóa học</h3>
-                    <div 
-                        className="prose prose-emerald max-w-none text-gray-600 text-sm md:text-base leading-relaxed"
-                        dangerouslySetInnerHTML={{ __html: product.content_html || '<p>Đang cập nhật nội dung...</p>' }}
-                    />
+                    <h3 className="text-lg font-bold text-gray-900 mb-4 border-l-4 border-emerald-500 pl-3">
+                        {isService ? 'Tổng quan giải pháp' : 'Giới thiệu khóa học'}
+                    </h3>
+                    <p className="text-gray-600 text-sm md:text-base leading-relaxed">{product.description}</p>
                 </div>
 
-                {/* TAB THÔNG TIN */}
+                {/* TABS (Đã sửa lỗi) */}
                 <CourseTabs product={product} />
 
-                {/* Các section khác... */}
+                {/* Benefits */}
                 <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100">
-                    <h3 className="text-lg font-bold text-gray-900 mb-6 uppercase border-l-4 border-emerald-500 pl-3">Giá trị nhận được</h3>
+                    <h3 className="text-lg font-bold text-gray-900 mb-6 uppercase border-l-4 border-emerald-500 pl-3">
+                        {isService ? 'Lợi ích mang lại' : 'Giá trị nhận được'}
+                    </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {(product.benefits || ['Tư duy xây dựng hệ thống', 'Thành thạo công cụ', 'Tối ưu quy trình']).map((item, idx) => (
+                        {(product.benefits || ['Tối ưu quy trình vận hành', 'Tiết kiệm chi phí nhân sự', 'Báo cáo realtime mọi lúc']).map((item, idx) => (
                             <div key={idx} className="flex items-start gap-3">
                                 <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
                                 <span className="text-gray-700 text-sm">{item}</span>
@@ -128,34 +104,42 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                     </div>
                 </div>
 
-                <div className="bg-emerald-50 rounded-2xl p-6 md:p-8 shadow-sm border border-emerald-100">
-                    <h3 className="text-lg font-bold text-gray-900 mb-6 uppercase border-l-4 border-emerald-500 pl-3">Kết quả đạt được</h3>
-                    <div className="space-y-3">
-                         {(product.outcomes || ['Tự tay thiết kế phần mềm', 'Xây dựng báo cáo tự động']).map((item, idx) => (
-                            <div key={idx} className="flex items-center gap-3 bg-white p-3 rounded-lg border border-emerald-100">
-                                <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-bold">{idx + 1}</span>
-                                <span className="text-gray-800 font-medium text-sm">{item}</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
+                {/* --- KHÔI PHỤC PHẦN YÊU CẦU / CẤU HÌNH (ĐẶT Ở DƯỚI LỢI ÍCH) --- */}
                 <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100">
-                    <h3 className="text-lg font-bold text-gray-900 mb-6 uppercase border-l-4 border-orange-500 pl-3">Yêu cầu tham gia</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <div className="flex items-start gap-3">
-                            <Laptop className="w-8 h-8 text-orange-500 bg-orange-50 p-1.5 rounded-lg" />
-                            <div><div className="font-bold text-sm text-gray-900">Thiết bị</div><div className="text-xs text-gray-500">Máy tính/Laptop ổn định</div></div>
-                        </div>
-                        <div className="flex items-start gap-3">
-                            <Wifi className="w-8 h-8 text-blue-500 bg-blue-50 p-1.5 rounded-lg" />
-                            <div><div className="font-bold text-sm text-gray-900">Internet</div><div className="text-xs text-gray-500">Kết nối mạng tốc độ cao</div></div>
-                        </div>
-                        <div className="flex items-start gap-3">
-                            <UserCheck className="w-8 h-8 text-purple-500 bg-purple-50 p-1.5 rounded-lg" />
-                            <div><div className="font-bold text-sm text-gray-900">Tài khoản</div><div className="text-xs text-gray-500">Gmail, AppSheet, Supabase</div></div>
-                        </div>
-                    </div>
+                     <h3 className="text-lg font-bold text-gray-900 mb-6 uppercase border-l-4 border-orange-500 pl-3">
+                        {isService ? 'Yêu cầu hệ thống' : 'Yêu cầu tham gia'}
+                     </h3>
+                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        {/* Mục 1: Thiết bị / Nền tảng */}
+                         <div className="flex items-start gap-3">
+                             {isService ? 
+                                <Monitor className="w-8 h-8 text-orange-500 bg-orange-50 p-1.5 rounded-lg" /> : 
+                                <Laptop className="w-8 h-8 text-orange-500 bg-orange-50 p-1.5 rounded-lg" />
+                             }
+                             <div>
+                                <div className="font-bold text-sm text-gray-900">{isService ? 'Nền tảng' : 'Thiết bị'}</div>
+                                <div className="text-xs text-gray-500">{isService ? 'Web Browser, Mobile App' : 'Máy tính/Laptop ổn định'}</div>
+                             </div>
+                         </div>
+                         
+                         {/* Mục 2: Internet */}
+                         <div className="flex items-start gap-3">
+                             <Wifi className="w-8 h-8 text-blue-500 bg-blue-50 p-1.5 rounded-lg" />
+                             <div>
+                                <div className="font-bold text-sm text-gray-900">Internet</div>
+                                <div className="text-xs text-gray-500">Kết nối mạng tốc độ cao</div>
+                             </div>
+                         </div>
+
+                         {/* Mục 3: Tài khoản */}
+                         <div className="flex items-start gap-3">
+                             <UserCheck className="w-8 h-8 text-purple-500 bg-purple-50 p-1.5 rounded-lg" />
+                             <div>
+                                <div className="font-bold text-sm text-gray-900">Tài khoản</div>
+                                <div className="text-xs text-gray-500">{isService ? 'Google / Zalo ID' : 'Gmail, AppSheet, Supabase'}</div>
+                             </div>
+                         </div>
+                     </div>
                 </div>
 
                 {/* Bài viết liên quan */}
@@ -176,21 +160,34 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                 </div>
             </div>
 
-            {/* Sidebar Phải */}
+            {/* --- CỘT PHẢI (SIDEBAR) --- */}
             <div className="lg:col-span-1 space-y-6 lg:sticky lg:top-24">
+                {/* Giữ nguyên sidebar */}
                 <div className="bg-white rounded-2xl shadow-xl border border-emerald-100 overflow-hidden hidden lg:block">
                     <div className="p-6 border-b border-gray-100">
                         <div className="flex items-end gap-2 mb-4">
                             <span className="text-3xl font-bold text-red-600">{formatPrice(product.price)}</span>
                             {product.old_price && <span className="text-gray-400 line-through text-sm mb-1">{formatPrice(product.old_price)}</span>}
                         </div>
-                        <ProductActions product={product} />
+                        <ProductActions product={product} /> 
                     </div>
+                    
                     <div className="p-6 bg-gray-50/50 space-y-4 text-sm text-gray-600">
-                        <div className="flex justify-between border-b border-dashed border-gray-200 pb-2"><span className="flex items-center gap-2"><Clock className="w-4 h-4 text-gray-400" /> Thời lượng</span><span className="font-bold text-gray-900">{product.total_duration || 'Cập nhật'}</span></div>
-                        <div className="flex justify-between border-b border-dashed border-gray-200 pb-2"><span className="flex items-center gap-2"><FileText className="w-4 h-4 text-gray-400" /> Số bài học</span><span className="font-bold text-gray-900">{product.chapters?.reduce((a, b) => a + (b.lessons?.length||0), 0)} bài</span></div>
-                        <div className="flex justify-between border-b border-dashed border-gray-200 pb-2"><span className="flex items-center gap-2"><MonitorPlay className="w-4 h-4 text-gray-400" /> Hình thức</span><span className="font-bold text-gray-900">Online Video</span></div>
-                        <div className="flex justify-between"><span className="flex items-center gap-2"><Users className="w-4 h-4 text-gray-400" /> Hỗ trợ</span><span className="font-bold text-gray-900">Zalo nhóm kín</span></div>
+                        {isService ? (
+                            <>
+                                <div className="flex justify-between border-b border-dashed border-gray-200 pb-2"><span className="flex items-center gap-2"><Smartphone className="w-4 h-4 text-gray-400" /> Nền tảng</span><span className="font-bold text-gray-900">{product.categories?.name || 'Đa nền tảng'}</span></div>
+                                <div className="flex justify-between border-b border-dashed border-gray-200 pb-2"><span className="flex items-center gap-2"><Tag className="w-4 h-4 text-gray-400" /> Ngành</span><span className="font-bold text-gray-900">{product.industry || 'Đa ngành'}</span></div>
+                                <div className="flex justify-between border-b border-dashed border-gray-200 pb-2"><span className="flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-gray-400" /> Bảo hành</span><span className="font-bold text-emerald-600">Trọn đời</span></div>
+                                <div className="flex justify-between"><span className="flex items-center gap-2"><Rocket className="w-4 h-4 text-gray-400" /> Triển khai</span><span className="font-bold text-gray-900">3 - 7 ngày</span></div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="flex justify-between border-b border-dashed border-gray-200 pb-2"><span className="flex items-center gap-2"><Clock className="w-4 h-4 text-gray-400" /> Thời lượng</span><span className="font-bold text-gray-900">{product.total_duration || 'Cập nhật'}</span></div>
+                                <div className="flex justify-between border-b border-dashed border-gray-200 pb-2"><span className="flex items-center gap-2"><FileText className="w-4 h-4 text-gray-400" /> Số bài học</span><span className="font-bold text-gray-900">{product.chapters?.reduce((a, b) => a + (b.lessons?.length||0), 0)} bài</span></div>
+                                <div className="flex justify-between border-b border-dashed border-gray-200 pb-2"><span className="flex items-center gap-2"><MonitorPlay className="w-4 h-4 text-gray-400" /> Hình thức</span><span className="font-bold text-gray-900">Online Video</span></div>
+                                <div className="flex justify-between"><span className="flex items-center gap-2"><Users className="w-4 h-4 text-gray-400" /> Hỗ trợ</span><span className="font-bold text-gray-900">Zalo nhóm kín</span></div>
+                            </>
+                        )}
                     </div>
                 </div>
 
@@ -198,28 +195,26 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                     <h3 className="font-bold text-gray-900 mb-3 text-sm">Chia sẻ ngay</h3>
                     <div className="flex gap-4 justify-start">
                         <button className="text-blue-600 hover:scale-110 transition-transform"><Copy className="w-6 h-6" /></button>
-                        <button className="text-blue-700 hover:scale-110 transition-transform"><svg className="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M9.19795 21.5H13.198V13.4901H16.8021L17.198 9.50977H13.198V7.5C13.198 6.94772 13.6457 6.5 14.198 6.5H17.198V2.5H14.198C11.4365 2.5 9.19795 4.73858 9.19795 7.5V9.50977H7.19795L6.80206 13.4901H9.19795V21.5Z" /></svg></button>
+                        <button className="text-blue-700 hover:scale-110 transition-transform"><Share2 className="w-6 h-6" /></button>
                         <button className="text-sky-500 hover:scale-110 transition-transform"><Send className="w-6 h-6" /></button>
                         <button className="text-red-500 hover:scale-110 transition-transform"><Mail className="w-6 h-6" /></button>
-                        <button className="hover:scale-110 transition-transform w-6 h-6 rounded-full overflow-hidden">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Icon_of_Zalo.svg/120px-Icon_of_Zalo.svg.png" alt="Zalo" />
-                        </button>
                     </div>
                 </div>
 
                 <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-                    <h3 className="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wider">Khóa học gợi ý</h3>
+                    <h3 className="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wider border-l-4 border-emerald-500 pl-2">
+                        {relatedTitle}
+                    </h3>
                     <div className="space-y-4">
-                         {relatedCourses.map((course) => (
-                             <Link href={`/product/${course.slug}`} key={course.id} className="block group">
+                         {relatedProducts.map((p) => (
+                             <Link href={`/product/${p.slug}`} key={p.id} className="block group">
                                 <div className="h-28 rounded-lg overflow-hidden relative mb-2">
                                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                                     <img src={course.thumbnail_url} alt={course.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                                     <div className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">HOT</div>
+                                     <img src={p.thumbnail_url} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                     <div className={`absolute top-2 right-2 ${relatedColor} text-white text-[10px] font-bold px-1.5 py-0.5 rounded`}>{relatedLabel}</div>
                                 </div>
-                                <h4 className="font-bold text-gray-800 text-sm line-clamp-2 group-hover:text-emerald-600 transition-colors">{course.name}</h4>
-                                <div className="text-red-600 font-bold text-sm mt-1">{formatPrice(course.price)}</div>
+                                <h4 className="font-bold text-gray-800 text-sm line-clamp-2 group-hover:text-emerald-600 transition-colors">{p.name}</h4>
+                                <div className="text-red-600 font-bold text-sm mt-1">{formatPrice(p.price)}</div>
                              </Link>
                          ))}
                     </div>
