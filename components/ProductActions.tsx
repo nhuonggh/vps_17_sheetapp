@@ -1,30 +1,34 @@
 'use client';
 
 import { ShoppingCart, Check, Heart, PlayCircle, Zap } from 'lucide-react';
-import { useCart, ProductInput } from '@/context/CartContext'; // Import ProductInput
+// Import ProductInput từ Context để thay thế cho 'any'
+import { useCart, ProductInput } from '@/context/CartContext'; 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface ProductActionsProps {
-  product: ProductInput; // FIX LỖI 2: Thay any bằng ProductInput
+  // SỬA LỖI 1: Dùng Type ProductInput thay vì any
+  product: ProductInput;
   showTrial?: boolean;
 }
 
 export default function ProductActions({ product, showTrial = true }: ProductActionsProps) {
+  // SỬA LỖI 2: Gọi đúng hàm 'addToCart' (trong ảnh lỗi bạn đang gọi addItem hoặc property không tồn tại)
   const { addToCart } = useCart();
+  
   const [isAdded, setIsAdded] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [showVideoModal, setShowVideoModal] = useState(false);
   const router = useRouter();
 
   const handleAddToCart = () => {
-    addToCart(product);
+    addToCart(product); // Đã đồng bộ tên hàm
     setIsAdded(true);
     setTimeout(() => setIsAdded(false), 2000);
   };
 
   const handleBuyNow = () => {
-    addToCart(product);
+    addToCart(product); 
     router.push('/cart');
   };
 
@@ -44,7 +48,7 @@ export default function ProductActions({ product, showTrial = true }: ProductAct
             onClick={() => setShowVideoModal(true)}
             className="px-4 md:px-6 py-3 md:py-4 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 shadow-lg shadow-orange-200 transition-all flex items-center gap-2 whitespace-nowrap"
           >
-            <PlayCircle className="w-5 h-5" /> <span className="hidden sm:inline">{product.type === 'service' ? 'Xem Demo' : 'Học thử'}</span>
+            <PlayCircle className="w-5 h-5" /> <span className="hidden sm:inline">Học thử</span>
           </button>
         )}
       </div>
@@ -73,7 +77,7 @@ export default function ProductActions({ product, showTrial = true }: ProductAct
         </button>
       </div>
 
-      {/* Popup Video Học thử */}
+      {/* Popup Video */}
       {showVideoModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setShowVideoModal(false)}>
            <div className="w-full max-w-4xl bg-black rounded-2xl overflow-hidden aspect-video relative shadow-2xl">

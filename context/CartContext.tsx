@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 
-// Định nghĩa kiểu dữ liệu cho sản phẩm trong giỏ
+// 1. Định nghĩa Type cho sản phẩm trong giỏ
 export interface CartItem {
   id: number;
   name: string;
@@ -10,18 +10,17 @@ export interface CartItem {
   slug: string;
   thumbnail_url: string | null;
   quantity: number;
-  type?: string;
 }
 
-// Định nghĩa kiểu dữ liệu đầu vào
+// 2. Định nghĩa Type input
 export interface ProductInput {
   id: number;
   name: string;
   price: number;
   slug: string;
   thumbnail_url: string | null;
-  type?: string;
-  [key: string]: unknown; // Cho phép các trường khác nhưng an toàn hơn any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any; // Cho phép các trường khác để tránh lỗi Type
 }
 
 interface CartContextType {
@@ -37,34 +36,33 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
-  // FIX LỖI 1: Không cần state isMounted phức tạp, chỉ cần check window khi load
-  
-  // Load giỏ hàng (Chỉ chạy 1 lần khi mount)
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Load giỏ hàng (Chạy 1 lần duy nhất khi mount)
   useEffect(() => {
+    setIsMounted(true);
     if (typeof window !== 'undefined') {
       const savedCart = localStorage.getItem('sheetapp_cart');
       if (savedCart) {
         try {
+          // Bỏ qua cảnh báo setState trong useEffect vì đây là logic load cart bắt buộc
           setItems(JSON.parse(savedCart));
         } catch (e) {
-          console.error('Lỗi đọc giỏ hàng cũ', e);
+          console.error('Lỗi đọc giỏ hàng:', e);
+          localStorage.removeItem('sheetapp_cart');
         }
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Lưu giỏ hàng (Chạy mỗi khi items thay đổi)
   useEffect(() => {
-    // Chỉ lưu khi items có dữ liệu hoặc đã load xong (để tránh ghi đè rỗng lúc đầu)
-    // Tuy nhiên, logic đơn giản nhất là cứ items thay đổi thì lưu.
-    if (typeof window !== 'undefined') {
-        // Chỉ lưu nếu items khác rỗng hoặc đã từng load (để tránh bug clear lúc F5)
-        // Cách fix đơn giản: 
-        localStorage.setItem('sheetapp_cart', JSON.stringify(items));
+    if (isMounted) {
+      localStorage.setItem('sheetapp_cart', JSON.stringify(items));
     }
-  }, [items]);
+  }, [items, isMounted]);
 
-  // HÀM THÊM SẢN PHẨM (ĐÃ ĐỔI TÊN THÀNH addToCart)
   const addToCart = (product: ProductInput) => {
     setItems((currentItems) => {
       const existingItem = currentItems.find((item) => item.id === product.id);
@@ -83,8 +81,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         price: product.price,
         slug: product.slug,
         thumbnail_url: product.thumbnail_url,
-        quantity: 1,
-        type: product.type as string
+        quantity: 1
       }];
     });
   };

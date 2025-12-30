@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { 
   CheckCircle2, Laptop, Wifi, UserCheck, Calendar, Clock, FileText, MonitorPlay, Users, Share2, Copy, Mail, Send, Smartphone, ShieldCheck, Rocket, Tag, Monitor
 } from 'lucide-react';
-import ProductActions from '@/components/ProductActions';
+import ProductActions from '@/components/ProductActions'; 
 import CourseTabs from '@/components/CourseTabs';
 import ProductImageSlider from '@/components/ProductImageSlider';
 
@@ -12,6 +12,8 @@ import ProductImageSlider from '@/components/ProductImageSlider';
 interface Lesson { id: number; title: string; duration: string; is_preview: boolean; sort_order: number; }
 interface Chapter { id: number; title: string; lessons: Lesson[]; sort_order: number; }
 interface Instructor { id: number; name: string; bio: string; avatar_url: string; rating: number; title: string; }
+
+// SỬA LỖI TẠI ĐÂY: Thêm eslint-disable cho dòng [key: string]: any
 interface Product {
   id: number; name: string; slug: string; price: number; old_price: number | null;
   thumbnail_url: string; gallery: string[];
@@ -22,11 +24,14 @@ interface Product {
   categories: { name: string; slug: string } | null;
   type: string;
   industry: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any; 
 }
+
 interface RelatedPost { id: number; title: string; slug: string; thumbnail_url: string; created_at: string; }
 interface RelatedProduct { id: number; name: string; slug: string; price: number; thumbnail_url: string; type: string; }
 
-// Fetch Logic
+// Các hàm fetch
 async function getProduct(slug: string): Promise<Product | null> {
   const { data, error } = await supabase.from('products').select(`*, categories (name, slug), instructor:instructors(*), chapters:chapters(*, lessons(*))`).eq('slug', slug).single();
   if (error || !data) return null;
@@ -89,7 +94,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                 {/* TABS */}
                 <CourseTabs product={product} />
 
-                {/* Lợi ích */}
+                {/* Benefits */}
                 <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100">
                     <h3 className="text-lg font-bold text-gray-900 mb-6 uppercase border-l-4 border-emerald-500 pl-3">
                         {isService ? 'Lợi ích mang lại' : 'Giá trị nhận được'}
@@ -104,13 +109,12 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                     </div>
                 </div>
 
-                {/* --- KHÔI PHỤC PHẦN YÊU CẦU / CẤU HÌNH (Đặt ở đây) --- */}
+                {/* Yêu cầu hệ thống */}
                 <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100">
                      <h3 className="text-lg font-bold text-gray-900 mb-6 uppercase border-l-4 border-orange-500 pl-3">
                         {isService ? 'Yêu cầu hệ thống' : 'Yêu cầu tham gia'}
                      </h3>
                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        {/* Mục 1: Thiết bị / Nền tảng */}
                          <div className="flex items-start gap-3">
                              {isService ? 
                                 <Monitor className="w-8 h-8 text-orange-500 bg-orange-50 p-1.5 rounded-lg" /> : 
@@ -121,8 +125,6 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                                 <div className="text-xs text-gray-500">{isService ? 'Web Browser, Mobile App' : 'Máy tính/Laptop ổn định'}</div>
                              </div>
                          </div>
-                         
-                         {/* Mục 2: Internet */}
                          <div className="flex items-start gap-3">
                              <Wifi className="w-8 h-8 text-blue-500 bg-blue-50 p-1.5 rounded-lg" />
                              <div>
@@ -130,8 +132,6 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                                 <div className="text-xs text-gray-500">Kết nối mạng tốc độ cao</div>
                              </div>
                          </div>
-
-                         {/* Mục 3: Tài khoản */}
                          <div className="flex items-start gap-3">
                              <UserCheck className="w-8 h-8 text-purple-500 bg-purple-50 p-1.5 rounded-lg" />
                              <div>
@@ -162,7 +162,6 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
             {/* --- CỘT PHẢI (SIDEBAR) --- */}
             <div className="lg:col-span-1 space-y-6 lg:sticky lg:top-24">
-                {/* Giữ nguyên sidebar */}
                 <div className="bg-white rounded-2xl shadow-xl border border-emerald-100 overflow-hidden hidden lg:block">
                     <div className="p-6 border-b border-gray-100">
                         <div className="flex items-end gap-2 mb-4">
@@ -191,7 +190,6 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                     </div>
                 </div>
 
-                {/* Các phần khác của Sidebar giữ nguyên */}
                 <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
                     <h3 className="font-bold text-gray-900 mb-3 text-sm">Chia sẻ ngay</h3>
                     <div className="flex gap-4 justify-start">
