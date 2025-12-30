@@ -1,17 +1,16 @@
 'use client';
 
 import { ShoppingCart, Check, Heart, PlayCircle, Zap } from 'lucide-react';
-import { useCart } from '@/context/CartContext';
+import { useCart, ProductInput } from '@/context/CartContext'; // Import ProductInput
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface ProductActionsProps {
-  product: any;
+  product: ProductInput; // FIX LỖI 2: Thay any bằng ProductInput
   showTrial?: boolean;
 }
 
 export default function ProductActions({ product, showTrial = true }: ProductActionsProps) {
-  // Bây giờ CartContext đã có addToCart nên dòng này sẽ hết lỗi
   const { addToCart } = useCart();
   const [isAdded, setIsAdded] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
