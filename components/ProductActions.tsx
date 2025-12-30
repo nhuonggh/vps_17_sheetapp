@@ -11,6 +11,7 @@ interface ProductActionsProps {
 }
 
 export default function ProductActions({ product, showTrial = true }: ProductActionsProps) {
+  // Bây giờ CartContext đã có addToCart nên dòng này sẽ hết lỗi
   const { addToCart } = useCart();
   const [isAdded, setIsAdded] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
@@ -40,12 +41,11 @@ export default function ProductActions({ product, showTrial = true }: ProductAct
         </button>
 
         {showTrial && (
-          // THAY ĐỔI: Màu cam cho nút học thử
           <button 
             onClick={() => setShowVideoModal(true)}
             className="px-4 md:px-6 py-3 md:py-4 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 shadow-lg shadow-orange-200 transition-all flex items-center gap-2 whitespace-nowrap"
           >
-            <PlayCircle className="w-5 h-5" /> <span className="hidden sm:inline">Học thử</span>
+            <PlayCircle className="w-5 h-5" /> <span className="hidden sm:inline">{product.type === 'service' ? 'Xem Demo' : 'Học thử'}</span>
           </button>
         )}
       </div>

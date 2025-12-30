@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { PlayCircle, Lock, ChevronDown, Star, MessageSquare, Send, UserCheck, BookOpen, Book, Settings, Layers, ShieldCheck, Zap } from 'lucide-react';
+import { PlayCircle, Star, MessageSquare, Send, UserCheck, BookOpen, Book, Layers, Zap } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
 import Link from 'next/link';
@@ -50,13 +50,13 @@ export default function CourseTabs({ product }: { product: ProductProps }) {
     router.push(`/learn/${product.slug}/lesson/${lesson.id}`);
   };
 
-  // CẤU HÌNH TABS (Đã bỏ 'specs', Thêm 'reviews' cho Service)
+  // CẤU HÌNH TABS: Bỏ 'specs' (Cấu hình) vì đã đưa xuống dưới
   const tabs = isService 
     ? [
         { id: 'content', label: 'Tính năng chi tiết', icon: Zap },
         { id: 'process', label: 'Quy trình triển khai', icon: Layers },
         { id: 'instructor', label: 'Chuyên gia phụ trách', icon: UserCheck },
-        { id: 'reviews', label: 'Đánh giá khách hàng', icon: Star }, // Đã thêm
+        { id: 'reviews', label: 'Đánh giá khách hàng', icon: Star },
       ]
     : [
         { id: 'content', label: 'Nội dung khóa học', icon: BookOpen },
@@ -82,7 +82,7 @@ export default function CourseTabs({ product }: { product: ProductProps }) {
 
       <div className="p-6">
         
-        {/* --- NỘI DUNG CHÍNH (CONTENT) --- */}
+        {/* NỘI DUNG CHÍNH */}
         {activeTab === 'content' && (
           <div>
              {isService ? (
@@ -143,7 +143,7 @@ export default function CourseTabs({ product }: { product: ProductProps }) {
           </div>
         )}
 
-        {/* --- TAB: QUY TRÌNH TRIỂN KHAI --- */}
+        {/* QUY TRÌNH TRIỂN KHAI */}
         {activeTab === 'process' && isService && (
             <div className="relative border-l-2 border-emerald-100 ml-3 space-y-8 py-2">
                 {[
@@ -162,22 +162,23 @@ export default function CourseTabs({ product }: { product: ProductProps }) {
             </div>
         )}
 
-        {/* --- TAB: GIẢNG VIÊN / CHUYÊN GIA --- */}
+        {/* GIẢNG VIÊN / CHUYÊN GIA */}
         {activeTab === 'instructor' && (
             <div className="flex flex-col md:flex-row gap-8 items-start">
                 <div className="text-center flex-shrink-0 w-full md:w-auto">
-                    {/* ... (Giữ nguyên phần instructor) ... */}
-                     <Link href={`/instructor/${product.instructor?.id || '#'}`}>
+                    <Link href={`/instructor/${product.instructor?.id || '#'}`}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={product.instructor?.avatar_url || 'https://via.placeholder.com/150'} alt="Instructor" className="w-32 h-32 rounded-full object-cover mx-auto mb-4 border-4 border-white shadow-lg" />
+                        <img src={product.instructor?.avatar_url || 'https://via.placeholder.com/150'} alt="Instructor" className="w-32 h-32 rounded-full object-cover mx-auto mb-4 border-4 border-white shadow-lg hover:scale-105 transition-transform cursor-pointer" />
                     </Link>
                     <div className="flex items-center justify-center gap-1 text-yellow-500 text-sm font-bold bg-yellow-50 py-1.5 px-4 rounded-full inline-block">
                         <span>{product.instructor?.rating || 5.0}</span> <Star className="w-4 h-4 fill-current inline-block -mt-1" />
                     </div>
                 </div>
                 <div className="flex-1">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-1">{product.instructor?.name || 'Đội ngũ SheetApp'}</h3>
-                    <p className="text-emerald-600 font-medium mb-4">{product.instructor?.title || (isService ? 'Chuyên gia tư vấn giải pháp' : 'Giảng viên')}</p>
+                    <div className="mb-4">
+                        <h3 className="text-2xl font-bold text-gray-900">{product.instructor?.name || 'Đội ngũ SheetApp'}</h3>
+                        <p className="text-emerald-600 font-medium">{product.instructor?.title || (isService ? 'Chuyên gia tư vấn giải pháp' : 'Giảng viên')}</p>
+                    </div>
                     <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line bg-gray-50 p-5 rounded-xl border border-gray-100 mb-6 relative">
                         <span className="absolute top-4 left-4 text-4xl text-gray-200 font-serif leading-none">“</span>
                         <span className="relative z-10">{product.instructor?.bio || 'Nhiều năm kinh nghiệm thực chiến...'}</span>
@@ -186,7 +187,7 @@ export default function CourseTabs({ product }: { product: ProductProps }) {
             </div>
         )}
 
-        {/* --- TAB: REVIEW (Hiện cho cả Dịch vụ & Khóa học) --- */}
+        {/* REVIEW (Hiện cho cả Dịch vụ & Khóa học) */}
         {activeTab === 'reviews' && (
             <div className="space-y-8">
                 <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 text-center">

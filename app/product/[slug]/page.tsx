@@ -8,7 +8,7 @@ import ProductActions from '@/components/ProductActions';
 import CourseTabs from '@/components/CourseTabs';
 import ProductImageSlider from '@/components/ProductImageSlider';
 
-// Interfaces (Giữ nguyên)
+// Interfaces
 interface Lesson { id: number; title: string; duration: string; is_preview: boolean; sort_order: number; }
 interface Chapter { id: number; title: string; lessons: Lesson[]; sort_order: number; }
 interface Instructor { id: number; name: string; bio: string; avatar_url: string; rating: number; title: string; }
@@ -26,7 +26,7 @@ interface Product {
 interface RelatedPost { id: number; title: string; slug: string; thumbnail_url: string; created_at: string; }
 interface RelatedProduct { id: number; name: string; slug: string; price: number; thumbnail_url: string; type: string; }
 
-// Các hàm fetch (Giữ nguyên)
+// Fetch Logic
 async function getProduct(slug: string): Promise<Product | null> {
   const { data, error } = await supabase.from('products').select(`*, categories (name, slug), instructor:instructors(*), chapters:chapters(*, lessons(*))`).eq('slug', slug).single();
   if (error || !data) return null;
@@ -86,10 +86,10 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                     <p className="text-gray-600 text-sm md:text-base leading-relaxed">{product.description}</p>
                 </div>
 
-                {/* TABS (Đã sửa lỗi) */}
+                {/* TABS */}
                 <CourseTabs product={product} />
 
-                {/* Benefits */}
+                {/* Lợi ích */}
                 <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100">
                     <h3 className="text-lg font-bold text-gray-900 mb-6 uppercase border-l-4 border-emerald-500 pl-3">
                         {isService ? 'Lợi ích mang lại' : 'Giá trị nhận được'}
@@ -104,7 +104,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                     </div>
                 </div>
 
-                {/* --- KHÔI PHỤC PHẦN YÊU CẦU / CẤU HÌNH (ĐẶT Ở DƯỚI LỢI ÍCH) --- */}
+                {/* --- KHÔI PHỤC PHẦN YÊU CẦU / CẤU HÌNH (Đặt ở đây) --- */}
                 <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100">
                      <h3 className="text-lg font-bold text-gray-900 mb-6 uppercase border-l-4 border-orange-500 pl-3">
                         {isService ? 'Yêu cầu hệ thống' : 'Yêu cầu tham gia'}
@@ -191,6 +191,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                     </div>
                 </div>
 
+                {/* Các phần khác của Sidebar giữ nguyên */}
                 <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
                     <h3 className="font-bold text-gray-900 mb-3 text-sm">Chia sẻ ngay</h3>
                     <div className="flex gap-4 justify-start">
