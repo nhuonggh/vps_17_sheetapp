@@ -6,7 +6,7 @@ import { useCart } from '@/context/CartContext';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation'; // Đã xóa useSearchParams gây lỗi
 import { APP_CONFIG } from '@/lib/constants';
 
 export default function MobileHeader() {
@@ -14,7 +14,8 @@ export default function MobileHeader() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
-  const searchParams = useSearchParams();
+  
+  // ĐÃ XÓA: const searchParams = useSearchParams(); -> Đây là thủ phạm gây lỗi Build!
 
   // State cho tìm kiếm
   const [keyword, setKeyword] = useState('');
@@ -67,7 +68,7 @@ export default function MobileHeader() {
 
   return (
     <>
-      {/* 1. HEADER CỐ ĐỊNH (FIXED) - Tăng chiều cao lên h-28 (112px) */}
+      {/* 1. HEADER CỐ ĐỊNH (FIXED) */}
       <header className="md:hidden fixed top-0 left-0 right-0 bg-white z-[100] shadow-sm border-b border-gray-100 h-28">
         <div className="flex flex-col h-full px-4 py-2 gap-2">
           
@@ -125,10 +126,10 @@ export default function MobileHeader() {
         </div>
       </header>
       
-      {/* Spacer để nội dung không bị Header che mất (h-28) */}
+      {/* Spacer */}
       <div className="md:hidden h-28 w-full bg-gray-50"></div>
 
-      {/* 2. SIDEBAR MENU (Giữ nguyên logic cũ) */}
+      {/* 2. SIDEBAR MENU */}
       {isMenuOpen && (
         <div className="fixed inset-0 z-[110] md:hidden">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsMenuOpen(false)}></div>
