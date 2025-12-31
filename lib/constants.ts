@@ -39,3 +39,63 @@ export const APP_CONFIG = {
     url: "https://bimvietsolutions.com"
   }
 };
+
+// --- CẤU TRÚC DỮ LIỆU BỘ LỌC 2 CẤP ---
+export const FILTER_TREE = {
+  industry: [
+    {
+      group: "Xây dựng",
+      tags: ["Nhà thầu", "Chủ đầu tư", "Tư vấn thiết kế", "Tư vấn giám sát"]
+    },
+    {
+      group: "F&B",
+      tags: ["Nhà hàng", "Khách sạn", "Khu du lịch", "Quán Cafe", "Bar/Pub"]
+    },
+    {
+      group: "Giáo dục",
+      tags: ["Trung tâm ngoại ngữ", "Dạy online", "Dạy offline", "Trường học"]
+    },
+    {
+      group: "Y tế",
+      tags: ["Nha khoa", "Phòng khám tư", "Nhà thuốc"]
+    },
+    {
+      group: "Dịch vụ",
+      tags: ["Trung tâm sát hạch lái xe", "Vận tải", "Logistics"]
+    },
+    {
+      group: "Thời trang & Spa",
+      tags: ["Cửa hàng thời trang", "Fitness & Gym", "Spa & Làm đẹp"]
+    },
+    {
+      group: "Sản xuất",
+      tags: ["Công ty bao bì", "Công ty Gỗ", "Công ty Dày Da", "Cơ khí"]
+    }
+  ],
+  tech: [
+    {
+      group: "Nocode",
+      tags: ["AppSheet", "NocodeBase", "Airtable"]
+    },
+    {
+      group: "Web App",
+      tags: ["Appscript", "Web giải pháp", "Next.js", "React"]
+    },
+    {
+      group: "Zalo Mini App",
+      tags: ["Zalo Mini App", "Zalo OA"]
+    },
+    {
+      group: "Bảng tính",
+      tags: ["Google Sheet", "File Excel", "VBA"]
+    },
+    {
+      group: "Phần mềm máy tính",
+      tags: ["Ứng dụng phần mềm", "Office Extension", "Tools PC"]
+    },
+    {
+      group: "Automation",
+      tags: ["n8n", "Make.com", "Chatbot AI"]
+    }
+  ]
+};

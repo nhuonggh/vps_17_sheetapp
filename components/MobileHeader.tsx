@@ -1,18 +1,23 @@
 'use client';
 
 import Link from 'next/link';
-import { ShoppingCart, Search, Menu, Sheet, X, ChevronDown } from 'lucide-react';
+import { ShoppingCart, Search, Menu, X, ChevronDown, Phone, Filter } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { User } from '@supabase/supabase-js'; // <-- THÊM MỚI: Import kiểu dữ liệu User chuẩn
+import { User } from '@supabase/supabase-js';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { APP_CONFIG } from '@/lib/constants';
 
 export default function MobileHeader() {
   const { totalItems } = useCart();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  
-  // SỬA LỖI: Thay <any> bằng <User | null>
   const [user, setUser] = useState<User | null>(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // State cho tìm kiếm
+  const [keyword, setKeyword] = useState('');
 
   useEffect(() => {
     const getUser = async () => {
@@ -22,78 +27,108 @@ export default function MobileHeader() {
     getUser();
   }, []);
 
+  // Xử lý tìm kiếm
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (keyword.trim()) {
+        router.push(`/search?q=${encodeURIComponent(keyword)}`);
+    }
+  };
+
+  // Xử lý mở bộ lọc (Chuyển hướng về trang danh mục và bật cờ filter)
+  const handleOpenFilter = () => {
+    router.push('/categories?openFilter=true');
+  };
+
   const menuGroups = [
     {
       title: "KHÓA HỌC ONLINE",
       items: [
-        { name: "Khóa học Miễn phí", href: "/courses/free" },
-        { name: "Khóa học Chuyên sâu (VIP)", href: "/courses/pro" },
+        { name: "Khóa học Miễn phí", href: "/categories?tab=course&cost=free" },
+        { name: "Khóa học Chuyên sâu (VIP)", href: "/categories?tab=course&cost=paid" },
       ]
     },
     {
       title: "DỊCH VỤ & GIẢI PHÁP",
       items: [
-        { name: "Zalo Mini App", href: "/category/zalo-mini-app" },
-        { name: "AppSheet App", href: "/category/appsheet" },
-        { name: "Web App", href: "/category/web-app" },
-        { name: "Google Apps Script", href: "/category/apps-script" },
-        { name: "Phần mềm PC", href: "/category/pc-software" },
-        { name: "Google Sheet Template", href: "/category/google-sheet" },
+        { name: "Zalo Mini App", href: "/services/zalo" },
+        { name: "AppSheet App", href: "/services/appsheet" },
+        { name: "Web App", href: "/services/web" },
       ]
     },
     {
       title: "TIỆN ÍCH MỞ RỘNG",
       items: [
-        { name: "Trắc nghiệm Online", href: "/tools/quiz" },
-        { name: "Tra cứu Mã số thuế", href: "/tools/tax" },
-        { name: "Tiện ích khác", href: "/tools/others" },
+        { name: "Tra cứu Mã số thuế", href: "/tools/lookup" },
+        { name: "Template Sheet", href: "/tools/template" },
       ]
     }
   ];
 
   return (
     <>
-      {/* 1. HEADER CỐ ĐỊNH (FIXED) */}
-      <header className="md:hidden fixed top-0 left-0 right-0 bg-white z-[100] shadow-sm border-b border-gray-100 h-14">
-        <div className="flex justify-between items-center px-4 h-full">
+      {/* 1. HEADER CỐ ĐỊNH (FIXED) - Tăng chiều cao lên h-28 (112px) */}
+      <header className="md:hidden fixed top-0 left-0 right-0 bg-white z-[100] shadow-sm border-b border-gray-100 h-28">
+        <div className="flex flex-col h-full px-4 py-2 gap-2">
           
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-1.5">
-            <div className="bg-emerald-100 p-1.5 rounded-md">
-               <Sheet className="w-5 h-5 text-emerald-600" />
+          {/* --- DÒNG 1: LOGO - HOTLINE - CART - MENU --- */}
+          <div className="flex justify-between items-center">
+            {/* Logo */}
+            <Link href="/" className="flex items-center gap-1.5">
+                <span className="font-bold text-xl text-emerald-600 tracking-tight">SheetApp</span>
+            </Link>
+
+            {/* Hotline Badge (Giữa) */}
+            <a href={`tel:${APP_CONFIG.contact.hotline_clean}`} className="bg-red-600 text-white px-3 py-1 rounded-full flex items-center gap-1 shadow-sm animate-pulse">
+                <Phone className="w-3 h-3 fill-current" />
+                <span className="text-xs font-bold">{APP_CONFIG.contact.phone}</span>
+            </a>
+
+            {/* Action Icons */}
+            <div className="flex items-center gap-3">
+                {/* Giỏ hàng */}
+                <Link href="/cart" className="relative text-gray-600">
+                    <ShoppingCart className="w-6 h-6" />
+                    {totalItems > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full ring-2 ring-white">
+                        {totalItems}
+                    </span>
+                    )}
+                </Link>
+
+                {/* Menu Toggle */}
+                <button onClick={() => setIsMenuOpen(true)} className="text-gray-700">
+                    <Menu className="w-7 h-7" />
+                </button>
             </div>
-            <span className="font-bold text-lg text-gray-800 tracking-tight">
-              Sheet<span className="text-emerald-600">App</span>
-            </span>
-          </Link>
+          </div>
 
-          {/* Action Icons */}
-          <div className="flex items-center gap-4">
-             <button className="text-gray-500">
-                <Search className="w-5 h-5" />
-             </button>
+          {/* --- DÒNG 2: TÌM KIẾM & LỌC --- */}
+          <div className="flex items-center gap-2">
+             <form onSubmit={handleSearch} className="flex-1 relative">
+                <input 
+                    type="text" 
+                    placeholder="Tìm khóa học, dịch vụ..." 
+                    className="w-full bg-gray-100 border-none text-sm rounded-lg pl-9 pr-3 py-2 focus:ring-1 focus:ring-emerald-500"
+                    value={keyword}
+                    onChange={(e) => setKeyword(e.target.value)}
+                />
+                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+             </form>
 
-             {/* Nút Giỏ hàng với số lượng màu đỏ */}
-             <Link href="/cart" className="relative text-gray-600">
-                <ShoppingCart className="w-6 h-6" />
-                {totalItems > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full ring-2 ring-white animate-pulse">
-                    {totalItems}
-                  </span>
-                )}
-             </Link>
-
-             <button onClick={() => setIsMenuOpen(true)} className="text-gray-700">
-                <Menu className="w-6 h-6" />
+             <button onClick={handleOpenFilter} className="flex items-center gap-1 text-gray-500 px-1">
+                <Filter className="w-5 h-5 text-emerald-600" />
+                <span className="text-xs font-medium text-emerald-600">Lọc</span>
              </button>
           </div>
+
         </div>
       </header>
       
-      {/* Spacer để nội dung không bị Header che mất */}
-      <div className="md:hidden h-14 w-full"></div>
+      {/* Spacer để nội dung không bị Header che mất (h-28) */}
+      <div className="md:hidden h-28 w-full bg-gray-50"></div>
 
-      {/* 2. SIDEBAR MENU */}
+      {/* 2. SIDEBAR MENU (Giữ nguyên logic cũ) */}
       {isMenuOpen && (
         <div className="fixed inset-0 z-[110] md:hidden">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsMenuOpen(false)}></div>
