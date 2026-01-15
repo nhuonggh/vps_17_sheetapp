@@ -2,66 +2,70 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-// Dùng bộ icon đồng nhất
-import { Home, LayoutGrid, CalendarClock, Bell, User } from 'lucide-react'; 
+import { Home, LayoutGrid, Calendar, User, BookOpen } from 'lucide-react';
 import { useState } from 'react';
-import ConsultationModal from './ConsultationModal'; 
+import BookingModal from '@/components/BookingModal'; // Import Modal mới tạo
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // State quản lý việc đóng/mở modal
+  const [showBooking, setShowBooking] = useState(false);
 
   const navItems = [
     { name: 'Trang chủ', href: '/', icon: Home },
     { name: 'Danh mục', href: '/categories', icon: LayoutGrid },
-    // Nút giữa đặc biệt: Đặt lịch
-    { name: 'Đặt lịch', href: '#', icon: CalendarClock, isAction: true }, 
-    { name: 'Thông báo', href: '/notifications', icon: Bell },
+    { name: 'Đặt lịch', href: '#', icon: Calendar, isAction: true }, // isAction = true: xử lý click riêng
+    { name: 'Kiến thức', href: '/news', icon: BookOpen },
     { name: 'Cá nhân', href: '/profile', icon: User },
   ];
 
   return (
     <>
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-[90] pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-        <div className="flex justify-around items-center h-16 px-1">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 pb-safe z-[90]">
+        <div className="flex justify-around items-center h-16">
           {navItems.map((item) => {
-            const isActive = pathname === item.href;
-            const Icon = item.icon;
+            // Logic Active
+            const isActive = item.href !== '#' && (pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href)));
             
-            // Xử lý nút Đặt lịch (Action Button) - Icon nổi bật
+            // Nếu là nút Hành động (Đặt lịch) -> Dùng thẻ button
             if (item.isAction) {
                 return (
-                    <button 
+                    <button
                         key={item.name}
-                        onClick={() => setIsModalOpen(true)}
-                        className="flex flex-col items-center justify-center w-full h-full space-y-1"
+                        onClick={() => setShowBooking(true)}
+                        className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${
+                            showBooking ? 'text-emerald-600' : 'text-gray-400 hover:text-gray-600'
+                        }`}
                     >
-                        <div className="bg-emerald-600 text-white p-2.5 rounded-full shadow-lg -mt-6 border-4 border-white">
-                            <Icon className="w-6 h-6" strokeWidth={2} />
-                        </div>
-                        <span className="text-[10px] font-bold text-gray-600">{item.name}</span>
+                        {/* Icon đổi style khi active */}
+                        <item.icon 
+                            className={`w-6 h-6 ${showBooking ? 'fill-current' : ''}`} 
+                            strokeWidth={showBooking ? 2.5 : 2} 
+                        />
+                        <span className="text-[10px] font-medium">{item.name}</span>
                     </button>
                 )
             }
 
+            // Các nút còn lại -> Dùng thẻ Link
             return (
-              <Link 
-                key={item.name} 
+              <Link
+                key={item.name}
                 href={item.href}
                 className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${
-                  isActive ? 'text-emerald-600' : 'text-gray-400'
+                  isActive ? 'text-emerald-600' : 'text-gray-400 hover:text-gray-600'
                 }`}
               >
-                <Icon className="w-6 h-6" strokeWidth={isActive ? 2.5 : 2} />
-                <span className={`text-[10px] ${isActive ? 'font-bold' : 'font-medium'}`}>{item.name}</span>
+                <item.icon className={`w-6 h-6 ${isActive ? 'fill-current' : ''}`} strokeWidth={isActive ? 2.5 : 2} />
+                <span className="text-[10px] font-medium">{item.name}</span>
               </Link>
             );
           })}
         </div>
       </div>
 
-      {/* Form Popup */}
-      <ConsultationModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      {/* Hiển thị Modal khi state showBooking = true */}
+      <BookingModal isOpen={showBooking} onClose={() => setShowBooking(false)} />
     </>
   );
 }

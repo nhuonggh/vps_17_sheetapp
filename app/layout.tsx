@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { Suspense } from "react"; // <--- 1. THÊM DÒNG NÀY
+import { Suspense } from "react";
 import "./globals.css";
-import { CartProvider } from "@/context/CartContext";
+import ClientProviders from "@/components/ClientProviders";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import MobileHeader from "@/components/MobileHeader";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import FloatingContact from "@/components/FloatingContact"; 
+import FloatingContact from "@/components/FloatingContact";
 import { APP_CONFIG } from "@/lib/constants";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -26,7 +26,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
@@ -43,17 +43,16 @@ export default function RootLayout({
     <html lang="vi">
       <body className={inter.className}>
         <script
-            type="application/ld+json"
-            dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
 
-        <CartProvider>
-          {/* 2. BỌC SUSPENSE CHO MOBILE HEADER */}
-          {/* Đây là chốt chặn giúp trang 404 không bị lỗi khi build */}
+        <ClientProviders>
+          {/* Mobile Header with Suspense boundary */}
           <Suspense fallback={<div className="h-28 bg-white shadow-sm"></div>}>
-             <MobileHeader />
+            <MobileHeader />
           </Suspense>
-          
+
           <div className="hidden md:block sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm">
             <Navbar />
           </div>
@@ -64,7 +63,7 @@ export default function RootLayout({
 
           <Footer />
           <MobileBottomNav />
-        </CartProvider>
+        </ClientProviders>
       </body>
     </html>
   );

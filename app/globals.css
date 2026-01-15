@@ -29,3 +29,40 @@ details[open] summary ~ * {
   0% { opacity: 0; transform: translateY(-10px); }
   100% { opacity: 1; transform: translateY(0); }
 }
+
+/* ========================================
+   reCAPTCHA Badge Positioning
+   Adjust position to avoid overlap with floating buttons
+   ======================================== */
+.grecaptcha-badge {
+  /* Move badge to bottom-left instead of bottom-right */
+  bottom: 20px !important;
+  left: 20px !important;
+  right: auto !important;
+  
+  /* Ensure badge is visible above most content */
+  z-index: 90 !important;
+  
+  /* Add subtle shadow for better visibility */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  border-radius: 4px !important;
+}
+
+/* Alternative: Keep on right but move up to avoid floating buttons */
+@media (min-width: 768px) {
+  .grecaptcha-badge {
+    /* On desktop, move to left to avoid floating contact buttons on right */
+    bottom: 20px !important;
+    left: 20px !important;
+    right: auto !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .grecaptcha-badge {
+    /* On mobile, also move to left to avoid mobile bottom nav and floating buttons */
+    bottom: 80px !important; /* Above mobile bottom nav */
+    left: 10px !important;
+    right: auto !important;
+  }
+}

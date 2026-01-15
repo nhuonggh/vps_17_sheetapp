@@ -1,0 +1,92 @@
+# Environment Variables Setup Guide for SheetApp
+
+## Required Environment Variables
+
+Copy the following to your `.env.local` file:
+
+```bash
+# ==========================================
+# SUPABASE CONFIGURATION
+# ==========================================
+
+# Public URL - Safe to expose to browser
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url_here
+
+# Public Anon Key - ONLY for auth, safe to expose
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+
+# Server-Only Keys - NEVER expose these to browser!
+# Get from: Supabase Dashboard → Settings → API → service_role key
+SUPABASE_URL=your_supabase_project_url_here
+SUPABASE_SERVICE_KEY=your_supabase_service_role_key_here
+
+# ==========================================
+# UPSTASH REDIS (Rate Limiting)
+# ==========================================
+
+# Get from: https://upstash.com → Create database → Copy REST API credentials
+UPSTASH_REDIS_REST_URL=https://your-redis-url.upstash.io
+UPSTASH_REDIS_REST_TOKEN=your_redis_token_here
+
+# ==========================================
+# GOOGLE reCAPTCHA v3 (Bot Protection)
+# ==========================================
+
+# Get from: https://www.google.com/recaptcha/admin → Register site
+# Public Site Key - Safe to expose
+NEXT_PUBLIC_RECAPTCHA_SITE_KEY=your_recaptcha_site_key_here
+
+# Secret Key - Server-only, NEVER expose!
+RECAPTCHA_SECRET_KEY=your_recaptcha_secret_key_here
+
+# ==========================================
+# PAYOS PAYMENT GATEWAY
+# ==========================================
+
+# Get from: https://my.payos.vn → Settings → API Keys
+# Server-only keys - NEVER expose to browser!
+PAYOS_CLIENT_ID=your_payos_client_id_here
+PAYOS_API_KEY=your_payos_api_key_here
+PAYOS_CHECKSUM_KEY=your_payos_checksum_key_here
+
+# ==========================================
+# APPLICATION SETTINGS
+# ==========================================
+
+# Production URL
+NEXT_PUBLIC_APP_URL=https://sheetapp.io.vn
+NEXT_PUBLIC_BASE_URL=https://sheetapp.io.vn
+
+# Node environment
+NODE_ENV=production
+```
+
+## Setup Instructions
+
+### 1. Upstash Redis Setup
+1. Go to https://upstash.com
+2. Create a free account
+3. Create a new Redis database
+4. Copy the REST API URL and Token
+5. Paste into `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
+
+### 2. Google reCAPTCHA Setup
+1. Go to https://www.google.com/recaptcha/admin
+2. Register a new site
+3. Choose reCAPTCHA v3
+4. Add your domain (localhost for development)
+5. Copy Site Key → `NEXT_PUBLIC_RECAPTCHA_SITE_KEY`
+6. Copy Secret Key → `RECAPTCHA_SECRET_KEY`
+
+### 3. Supabase Configuration
+1. Go to Supabase Dashboard → Settings → API
+2. Copy Project URL → `SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_URL`
+3. Copy anon/public key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+4. Copy service_role key → `SUPABASE_SERVICE_KEY` (⚠️ Keep secret!)
+
+## Security Notes
+
+1. **NEVER** commit `.env.local` to git
+2. Variables with `NEXT_PUBLIC_` prefix are exposed to browser
+3. Server-only variables (no prefix) stay secure on server
+4. For Vercel deployment, add all variables in project settings

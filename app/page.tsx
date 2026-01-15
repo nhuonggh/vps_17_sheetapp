@@ -1,143 +1,188 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { Plus, Star, ArrowRight, Calendar, Eye } from 'lucide-react';
-import HeroSlider from '@/components/HeroSlider';
+import HeroSlider from '@/components/HeroSlider'; 
+import { ChevronRight, Star, Quote } from 'lucide-react';
 
-// Định nghĩa Interface
+// --- INTERFACE & MOCK DATA ---
 interface Product {
-  id: number; name: string; slug: string; price: number; thumbnail_url: string | null; category: string | null; type: string | null; is_featured: boolean | null; created_at: string;
-}
-interface Partner { id: number; name: string; logo_url: string; is_active: boolean; sort_order: number; }
-interface Review { id: number; customer_name: string; customer_role: string; content: string; avatar_url: string | null; is_active: boolean; sort_order: number; }
-// Thêm Interface Tin tức
-interface Post { id: number; title: string; slug: string; excerpt: string; thumbnail_url: string; views: number; created_at: string; }
-
-async function getHomePageData() {
-  const { data: products } = await supabase.from('products').select('*').eq('is_featured', true).order('created_at', { ascending: false });
-  const { data: partners } = await supabase.from('partners').select('*').eq('is_active', true).order('sort_order', { ascending: true });
-  const { data: reviews } = await supabase.from('testimonials').select('*').eq('is_active', true).order('sort_order', { ascending: true });
-  // Lấy tin tức
-  const { data: posts } = await supabase.from('posts').select('*').limit(3).order('created_at', { ascending: false });
-
-  return { 
-    products: (products as unknown as Product[]) || [], 
-    partners: (partners as unknown as Partner[]) || [], 
-    reviews: (reviews as unknown as Review[]) || [],
-    posts: (posts as unknown as Post[]) || []
-  };
+  id: number;
+  name: string;
+  slug: string;
+  price: number;
+  thumbnail_url: string;
+  type: string;
 }
 
-// Component Sản phẩm (Giữ nguyên)
-const CategorySection = ({ title, items, link }: { title: string, items: Product[], link: string }) => {
-  if (!items || items.length === 0) return null;
-  return (
-    <section className="mb-12">
-      <div className="flex justify-between items-center mb-6 px-4 md:px-0">
-        <h2 className="text-xl md:text-2xl font-bold text-gray-900 border-l-4 border-emerald-500 pl-3">{title}</h2>
-        <Link href={link} className="text-sm text-emerald-600 font-medium hover:underline flex items-center gap-1">Xem tất cả <ArrowRight className="w-4 h-4" /></Link>
-      </div>
-      <div className="flex overflow-x-auto gap-4 pb-4 px-4 md:px-0 scrollbar-hide snap-x">
-        {items.map((product) => (
-          <Link href={`/product/${product.slug}`} key={product.id} className="flex-shrink-0 w-48 md:w-64 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden snap-start group hover:shadow-md transition-all">
-            <div className="relative h-48 md:h-56 bg-gray-100">
-               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={product.thumbnail_url || 'https://via.placeholder.com/300'} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-              {product.type === 'course' && <div className="absolute top-2 right-2 bg-blue-600 text-white text-[10px] font-bold px-2 py-1 rounded">KHÓA HỌC</div>}
+const NEWS_DATA = [
+  { id: 1, title: "DeepSeek là gì? Đối thủ khiến ChatGPT lo sợ có gì đặc biệt?", date: "06/01/2026", image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=300&h=200" },
+  { id: 2, title: "Tổng hợp 10 hàm Excel 'cứu mạng' dân văn phòng 2026", date: "05/01/2026", image: "https://images.unsplash.com/photo-1543286386-2e659306cd6c?auto=format&fit=crop&q=80&w=300&h=200" },
+  { id: 3, title: "AppSheet là gì? Tại sao nên dùng AppSheet?", date: "26/12/2025", image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=300&h=200" },
+];
+
+const PARTNERS = [
+  { name: "Google", logo: "https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg" },
+  { name: "Microsoft", logo: "https://upload.wikimedia.org/wikipedia/commons/9/96/Microsoft_logo_%282012%29.svg" },
+  { name: "Zalo", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c6/Zalo_logo_2024.svg/200px-Zalo_logo_2024.svg.png" },
+  { name: "AppSheet", logo: "https://seeklogo.com/images/A/appsheet-logo-7076B95C39-seeklogo.com.png" },
+];
+
+const TESTIMONIALS = [
+  { id: 1, name: "Nguyễn Văn A", role: "CEO, Tech Corp", content: "Giải pháp tuyệt vời, giúp tôi tiết kiệm 50% thời gian quản lý.", avatar: "https://i.pravatar.cc/150?u=1" },
+  { id: 2, name: "Trần Thị B", role: "HR Manager", content: "Khóa học rất thực tế, giảng viên nhiệt tình hỗ trợ.", avatar: "https://i.pravatar.cc/150?u=2" },
+];
+
+export default function HomePage() {
+  const [courses, setCourses] = useState<Product[]>([]);
+  const [services, setServices] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      
+      // Lấy Khóa học
+      const { data: coursesData } = await supabase
+        .from('products')
+        .select('id, name, slug, price, thumbnail_url, type')
+        .eq('type', 'course')
+        .eq('is_active', true)
+        .limit(4)
+        .order('created_at', { ascending: false });
+
+      // Lấy Dịch vụ
+      const { data: servicesData } = await supabase
+        .from('products')
+        .select('id, name, slug, price, thumbnail_url, type')
+        .eq('type', 'service')
+        .eq('is_active', true)
+        .limit(4)
+        .order('created_at', { ascending: false });
+
+      if (coursesData) setCourses(coursesData);
+      if (servicesData) setServices(servicesData);
+      setLoading(false);
+    };
+    fetchData();
+  }, []);
+
+  const formatPrice = (price: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
+
+  // Component Card
+  const ProductCard = ({ p }: { p: Product }) => (
+    <Link href={`/product/${p.slug}`} className="group bg-white border border-gray-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col h-full">
+        <div className="aspect-video relative bg-gray-100 overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={p.thumbnail_url} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+            {p.price === 0 && <span className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">FREE</span>}
+        </div>
+        <div className="p-3 flex flex-col flex-1">
+            <h3 className="font-bold text-gray-900 text-sm line-clamp-2 mb-2 group-hover:text-emerald-600 min-h-[40px]">{p.name}</h3>
+            <div className="mt-auto pt-2 border-t border-gray-50 flex items-center justify-between">
+                <span className="text-red-600 font-bold text-sm">{p.price === 0 ? 'Miễn phí' : formatPrice(p.price)}</span>
             </div>
-            <div className="p-3">
-              <h3 className="font-medium text-gray-900 line-clamp-2 text-sm md:text-base min-h-[40px] mb-2">{product.name}</h3>
-              <div className="flex items-center justify-between">
-                <div className="font-bold text-emerald-600 text-sm md:text-lg">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(product.price)}</div>
-                <button className="bg-gray-100 text-gray-600 p-1.5 rounded-full hover:bg-emerald-600 hover:text-white transition-colors"><Plus size={16} /></button>
-              </div>
-            </div>
-          </Link>
-        ))}
-      </div>
-    </section>
+        </div>
+    </Link>
   );
-};
-
-export default async function HomePage() {
-  const { products, partners, reviews, posts } = await getHomePageData();
-  const categories = Array.from(new Set(products.map(p => p.category || 'Khác')));
 
   return (
-    <main className="min-h-screen bg-gray-50 pb-12">
-      <div className="mb-12"><HeroSlider /></div>
+    <main className="min-h-screen bg-white pb-20">
+      
+      {/* 1. SLIDE CHẠY ẢNH (HERO) */}
+      <section className="mt-0 md:mt-8">
+         <HeroSlider />
+      </section>
 
-      <div className="max-w-7xl mx-auto md:px-8">
-        {categories.map((cat) => (
-            <CategorySection key={cat} title={cat} items={products.filter(p => p.category === cat)} link={`/category/${cat}`} />
-        ))}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12 py-8">
 
-        {/* --- TIN TỨC (MỚI) --- */}
-        {posts.length > 0 && (
-          <section className="mb-12 px-4 md:px-0">
-             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl md:text-2xl font-bold text-gray-900 border-l-4 border-emerald-500 pl-3">Kiến thức mới</h2>
-                <Link href="/news" className="text-sm text-emerald-600 font-medium hover:underline flex items-center gap-1">Xem blog <ArrowRight className="w-4 h-4" /></Link>
-             </div>
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {posts.map(post => (
-                   <Link href={`/news/${post.slug}`} key={post.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden group hover:shadow-md transition-all">
-                      <div className="h-48 overflow-hidden">
-                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                         <img src={post.thumbnail_url} alt={post.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                      </div>
-                      <div className="p-4">
-                         <h3 className="font-bold text-gray-900 line-clamp-2 mb-2 group-hover:text-emerald-600 transition-colors">{post.title}</h3>
-                         <p className="text-sm text-gray-500 line-clamp-2 mb-3">{post.excerpt}</p>
-                         <div className="flex items-center text-xs text-gray-400 gap-4">
-                            <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {new Date(post.created_at).toLocaleDateString('vi-VN')}</span>
-                            <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> {post.views}</span>
-                         </div>
-                      </div>
-                   </Link>
-                ))}
-             </div>
-          </section>
-        )}
-
-        {/* --- ĐỐI TÁC --- */}
-        {partners.length > 0 && (
-            <section className="py-8 border-t border-gray-200 mt-8">
-                <h2 className="text-center text-sm font-bold text-gray-400 uppercase tracking-widest mb-6">Đối tác tin cậy</h2>
-                <div className="flex flex-wrap justify-center gap-8 md:gap-16 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
-                    {partners.map(p => (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img key={p.id} src={p.logo_url} alt={p.name} className="h-8 md:h-10 object-contain" />
-                    ))}
+        {/* 2. KHÓA HỌC */}
+        <section>
+            <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-gray-900 uppercase border-l-4 border-emerald-500 pl-3">Khóa học mới nhất</h2>
+                <Link href="/categories?tab=course" className="text-sm font-semibold text-emerald-600 flex items-center gap-1 hover:underline">
+                    Xem tất cả <ChevronRight className="w-4 h-4"/>
+                </Link>
+            </div>
+            {loading ? <div className="text-center py-10 text-gray-400">Đang tải...</div> : (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {courses.map(p => <ProductCard key={p.id} p={p} />)}
                 </div>
-            </section>
-        )}
+            )}
+        </section>
 
-        {/* --- REVIEW (ĐÃ SỬA THÀNH TRƯỢT NGANG TRÊN MOBILE) --- */}
-        {reviews.length > 0 && (
-            <section className="py-12 bg-emerald-50/50 -mx-4 md:mx-0 px-4 md:px-8 md:rounded-3xl">
-                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8 text-center">Khách hàng nói gì?</h2>
-                
-                {/* Thay đổi class ở đây: flex overflow-x-auto snap-x */}
-                <div className="flex md:grid md:grid-cols-3 overflow-x-auto snap-x gap-4 md:gap-6 pb-4 scrollbar-hide">
-                    {reviews.map(review => (
-                        <div key={review.id} className="min-w-[85%] md:min-w-0 snap-center bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
-                            <div className="flex gap-1 text-yellow-400 mb-4">
-                                {[1,2,3,4,5].map(i => <Star key={i} className="w-4 h-4 fill-current" />)}
-                            </div>
-                            <p className="text-gray-600 mb-6 italic flex-1">&quot;{review.content}&quot;</p>
-                            <div className="flex items-center gap-3 mt-auto">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={review.avatar_url || 'https://via.placeholder.com/50'} alt={review.customer_name} className="w-10 h-10 rounded-full" />
-                                <div>
-                                    <div className="font-bold text-gray-900 text-sm">{review.customer_name}</div>
-                                    <div className="text-xs text-emerald-600 font-medium">{review.customer_role}</div>
-                                </div>
-                            </div>
+        {/* 3. DỊCH VỤ */}
+        <section>
+            <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-gray-900 uppercase border-l-4 border-blue-500 pl-3">Dịch vụ & Giải pháp</h2>
+                <Link href="/categories?tab=service" className="text-sm font-semibold text-blue-600 flex items-center gap-1 hover:underline">
+                    Xem tất cả <ChevronRight className="w-4 h-4"/>
+                </Link>
+            </div>
+            {loading ? <div className="text-center py-10 text-gray-400">Đang tải...</div> : (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {services.map(p => <ProductCard key={p.id} p={p} />)}
+                </div>
+            )}
+        </section>
+
+        {/* 4. KIẾN THỨC (NEWS) */}
+        <section>
+            <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-gray-900 uppercase border-l-4 border-orange-500 pl-3">Kiến thức & Tin tức</h2>
+                <Link href="/blog" className="text-sm font-semibold text-orange-600 flex items-center gap-1 hover:underline">
+                    Xem thêm <ChevronRight className="w-4 h-4"/>
+                </Link>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {NEWS_DATA.map(news => (
+                    <Link href={`/blog/${news.id}`} key={news.id} className="flex gap-4 group md:block">
+                        <div className="w-32 h-20 md:w-full md:h-48 flex-shrink-0 rounded-lg overflow-hidden relative">
+                             {/* eslint-disable-next-line @next/next/no-img-element */}
+                             <img src={news.image} alt={news.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                         </div>
-                    ))}
-                </div>
-            </section>
-        )}
+                        <div className="flex flex-col justify-center md:mt-3">
+                            <h3 className="font-bold text-gray-900 text-sm md:text-base line-clamp-2 group-hover:text-orange-600 transition-colors mb-1">{news.title}</h3>
+                            <span className="text-xs text-gray-400">{news.date}</span>
+                        </div>
+                    </Link>
+                ))}
+            </div>
+        </section>
+
+        {/* 5. ĐỐI TÁC TIN CẬY */}
+        <section className="bg-gray-50 -mx-4 px-4 py-8 md:rounded-2xl">
+            <h2 className="text-center text-lg font-bold text-gray-900 uppercase mb-6">Đối tác tin cậy</h2>
+            <div className="flex flex-wrap justify-center items-center gap-8 md:gap-12 opacity-70 grayscale hover:grayscale-0 transition-all">
+                {PARTNERS.map((partner, idx) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img key={idx} src={partner.logo} alt={partner.name} className="h-8 md:h-10 object-contain mix-blend-multiply" />
+                ))}
+            </div>
+        </section>
+
+        {/* 6. KHÁCH HÀNG NÓI GÌ */}
+        <section>
+            <h2 className="text-xl font-bold text-gray-900 uppercase border-l-4 border-purple-500 pl-3 mb-6">Khách hàng nói gì?</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {TESTIMONIALS.map(t => (
+                    <div key={t.id} className="bg-white border border-gray-100 p-5 rounded-2xl shadow-sm flex gap-4">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={t.avatar} alt={t.name} className="w-12 h-12 rounded-full object-cover" />
+                        <div>
+                            <div className="flex text-yellow-400 mb-1"><Star className="w-3 h-3 fill-current"/><Star className="w-3 h-3 fill-current"/><Star className="w-3 h-3 fill-current"/><Star className="w-3 h-3 fill-current"/><Star className="w-3 h-3 fill-current"/></div>
+                            <p className="text-gray-600 text-sm italic mb-2 line-clamp-2"><Quote className="w-3 h-3 inline-block rotate-180 mr-1 text-gray-300"/>{t.content}</p>
+                            <h4 className="font-bold text-sm text-gray-900">{t.name}</h4>
+                            <span className="text-xs text-gray-400">{t.role}</span>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </section>
+
+        {/* ĐÃ XÓA PHẦN LIÊN HỆ (GREEN BOX) */}
+
       </div>
     </main>
   );

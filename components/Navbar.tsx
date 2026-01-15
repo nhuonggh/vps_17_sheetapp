@@ -7,8 +7,8 @@ import { supabase } from '@/lib/supabase';
 import { useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { useCart } from '@/context/CartContext';
+import { APP_CONFIG } from '@/lib/constants';
 
-// Định nghĩa kiểu dữ liệu cho Menu đa cấp
 type MenuItem = {
   name: string;
   href: string;
@@ -24,18 +24,27 @@ type MenuSection = {
 export default function Navbar() {
   const [user, setUser] = useState<User | null>(null);
   const { totalItems } = useCart();
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    // FIX ESLINT: Dùng setTimeout(..., 0)
+    const timer = setTimeout(() => setIsMounted(true), 0);
+
     const getUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user ?? null);
     };
     getUser();
+    
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setUser(session?.user ?? null));
-    return () => subscription.unsubscribe();
+    
+    return () => {
+        clearTimeout(timer);
+        subscription.unsubscribe();
+    };
   }, []);
 
-  // --- CẤU HÌNH MENU DỮ LIỆU (CẬP NHẬT MỚI NHẤT) ---
+  // --- CẤU HÌNH MENU DỮ LIỆU (ĐÃ XÓA TIỆN ÍCH) ---
   const menuItems: MenuSection[] = [
     { 
       title: "Khóa học", 
@@ -52,7 +61,6 @@ export default function Navbar() {
       title: "Dịch vụ", 
       href: "/services", 
       submenu: [
-        // 1. ZALO MINI APP
         { 
           name: "Zalo Mini App", 
           href: "/services/zalo",
@@ -70,7 +78,6 @@ export default function Navbar() {
             { name: "Xây dựng", href: "/services/zalo?industry=Xây dựng" },
           ]
         },
-        // 2. NOCODE APP
         { 
           name: "Nocode App - AppSheet", 
           href: "/services/appsheet",
@@ -83,8 +90,6 @@ export default function Navbar() {
           ]
         },
         { name: "Nocode App - NocodeBase", href: "/services/nocodebase" },
-        
-        // 3. WEB APP
         { 
           name: "Ứng dụng Web", 
           href: "/services/web",
@@ -94,8 +99,6 @@ export default function Navbar() {
             { name: "Bất động sản", href: "/services/web?industry=Bất động sản" },
           ]
         },
-
-        // 4. PC APP
         { 
           name: "Ứng dụng trên PC", 
           href: "/services/pc",
@@ -104,8 +107,6 @@ export default function Navbar() {
             { name: "Tài chính", href: "/services/pc?industry=Tài chính" },
           ]
         },
-
-        // 5. GOOGLE SHEET
         { 
           name: "Tiện ích Google Sheet", 
           href: "/services/googlesheet",
@@ -116,8 +117,6 @@ export default function Navbar() {
             { name: "Tài chính", href: "/services/googlesheet?industry=Tài chính" },
           ]
         },
-
-        // 6. AI AUTOMATION
         { 
           name: "AI Automation", 
           href: "/services/automation",
@@ -126,14 +125,6 @@ export default function Navbar() {
             { name: "Giải pháp Make.com", href: "/services/automation/make" },
           ]
         }
-      ] 
-    },
-    { 
-      title: "Tiện ích", 
-      href: "/tools", 
-      submenu: [
-        { name: "Template Sheet", href: "/tools/template" }, 
-        { name: "Tra cứu Online", href: "/tools/lookup" }
       ] 
     }
   ];
@@ -156,31 +147,18 @@ export default function Navbar() {
                 {item.title} <ChevronDown className="w-4 h-4 transition-transform group-hover:rotate-180" />
               </Link>
               
-              {/* DROPDOWN CẤP 2 */}
               <div className="absolute top-full left-0 w-64 bg-white shadow-xl rounded-xl border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0 pb-2">
                 <div className="p-2 space-y-1">
                   {item.submenu.map((sub) => (
-                    <div key={sub.name} className="relative group/sub"> {/* group/sub để xử lý hover cấp 3 */}
-                        
-                        <Link 
-                            href={sub.href} 
-                            className="flex items-center justify-between px-4 py-2.5 text-sm text-gray-600 hover:bg-emerald-50 hover:text-emerald-600 rounded-lg"
-                        >
+                    <div key={sub.name} className="relative group/sub"> 
+                        <Link href={sub.href} className="flex items-center justify-between px-4 py-2.5 text-sm text-gray-600 hover:bg-emerald-50 hover:text-emerald-600 rounded-lg">
                             <span>{sub.name}</span>
-                            {/* Nếu có con thì hiện mũi tên phải */}
                             {sub.children && <ChevronRight className="w-4 h-4 text-gray-400" />}
                         </Link>
-
-                        {/* DROPDOWN CẤP 3 (FLYOUT) */}
                         {sub.children && (
                             <div className="absolute left-full top-0 w-60 bg-white shadow-xl rounded-xl border border-gray-100 opacity-0 invisible group-hover/sub:opacity-100 group-hover/sub:visible transition-all duration-200 ml-2 p-2">
                                 {sub.children.map((child) => (
-                                    <Link 
-                                        key={child.name} 
-                                        href={child.href} 
-                                        className="block px-4 py-2 text-sm text-gray-600 hover:bg-emerald-50 hover:text-emerald-600 rounded-lg truncate"
-                                        title={child.name}
-                                    >
+                                    <Link key={child.name} href={child.href} className="block px-4 py-2 text-sm text-gray-600 hover:bg-emerald-50 hover:text-emerald-600 rounded-lg truncate" title={child.name}>
                                         {child.name}
                                     </Link>
                                 ))}
@@ -198,25 +176,21 @@ export default function Navbar() {
         {/* Search */}
         <div className="hidden lg:flex flex-1 max-w-xs mx-6">
             <div className="relative w-full group">
-                <input 
-                    type="text" 
-                    placeholder="Tìm kiếm..." 
-                    className="w-full bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-full pl-4 pr-10 py-2.5 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
-                />
-                <button className="absolute right-0 top-0 h-full px-3 text-gray-400 group-focus-within:text-emerald-600">
-                    <Search className="w-4 h-4" />
-                </button>
+                <input type="text" placeholder="Tìm kiếm..." className="w-full bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-full pl-4 pr-10 py-2.5 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all" />
+                <button className="absolute right-0 top-0 h-full px-3 text-gray-400 group-focus-within:text-emerald-600"><Search className="w-4 h-4" /></button>
             </div>
         </div>
 
         {/* Buttons */}
         <div className="flex items-center gap-3 lg:gap-4 flex-shrink-0">
+            <a href={`tel:${APP_CONFIG.contact.hotline_clean}`} className="hidden xl:flex bg-red-500 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-sm hover:bg-red-600 transition-colors">
+                {APP_CONFIG.contact.phone}
+            </a>
             <Link href="/cart" className="p-2 text-gray-600 hover:bg-gray-100 rounded-full relative">
               <ShoppingCart className="w-5 h-5" />
-              {totalItems > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">{totalItems}</span>}
+              {isMounted && totalItems > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">{totalItems}</span>}
             </Link>
-
-            {user ? (
+            {isMounted && user ? (
                <div className="flex items-center gap-3">
                  {/* eslint-disable-next-line @next/next/no-img-element */}
                  <img src={user.user_metadata.avatar_url || 'https://via.placeholder.com/40'} alt="Avatar" className="w-9 h-9 rounded-full border border-gray-200" />
