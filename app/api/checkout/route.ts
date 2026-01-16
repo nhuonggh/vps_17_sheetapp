@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { validateFormInput } from '@/lib/validators';
-import { createPaymentLink, isPayOSConfigured } from '@/lib/payos';
+import { createPaymentLinkDirect } from '@/lib/payos-direct';
+import { isPayOSConfigured } from '@/lib/payos';
 
 /**
  * POST /api/checkout
@@ -112,12 +113,18 @@ export async function POST(request: NextRequest) {
         let qrCode: string | null = null;
 
         if (isPayOSConfigured()) {
-            console.log('PayOS configured - creating payment link...');
+            console.log('✅ PayOS configured - creating payment link via direct API...');
 
-            const paymentResult = await createPaymentLink({
-                orderId,
+            // Use Unix timestamp as orderCode (required integer by PayOS)
+            const orderCodeInt = Math.floor(Date.now() / 1000);
+            const domain = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+
+            const paymentResult = await createPaymentLinkDirect({
+                orderCode: orderCodeInt,
                 amount: totalAmount,
-                description: `Thanh toan don hang ${orderId}`,
+                description: orderId.substring(0, 9), // Max 9 chars for MB Bank
+                returnUrl: `${domain}/payment/callback?orderCode=${orderId}`,
+                cancelUrl: `${domain}/payment/callback?cancelled=true&orderCode=${orderId}`,
                 items: validatedItems.map(item => ({
                     name: item.product_name,
                     quantity: item.quantity,
@@ -126,6 +133,7 @@ export async function POST(request: NextRequest) {
                 buyerName: validation.sanitized.name,
                 buyerEmail: validation.sanitized.email,
                 buyerPhone: validation.sanitized.phone,
+                expiredAt: Math.floor(Date.now() / 1000) + 15 * 60, // 15 minutes
             });
 
             if (paymentResult.success && paymentResult.data) {
