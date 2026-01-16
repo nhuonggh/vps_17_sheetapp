@@ -32,8 +32,10 @@ export async function createPaymentLinkDirect(data: PaymentLinkData) {
     console.log('Request data:', { orderCode: data.orderCode, amount: data.amount, description: data.description });
 
     // Generate signature per PayOS spec
+    // CRITICAL: cancelUrl and returnUrl must NOT be encoded in signature string!
+    // Only description needs encoding
     // Format: amount=$amount&cancelUrl=$cancelUrl&description=$description&orderCode=$orderCode&returnUrl=$returnUrl
-    const sortedData = `amount=${data.amount}&cancelUrl=${encodeURIComponent(data.cancelUrl)}&description=${encodeURIComponent(data.description)}&orderCode=${data.orderCode}&returnUrl=${encodeURIComponent(data.returnUrl)}`;
+    const sortedData = `amount=${data.amount}&cancelUrl=${data.cancelUrl}&description=${encodeURIComponent(data.description)}&orderCode=${data.orderCode}&returnUrl=${data.returnUrl}`;
 
     console.log('📝 Signature data string:', sortedData);
 
