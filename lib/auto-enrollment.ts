@@ -4,6 +4,7 @@
  */
 
 import { supabaseServer } from '@/lib/supabase-server';
+import { Resend } from 'resend';
 
 interface Order {
     order_id: string;
@@ -77,28 +78,15 @@ async function getProductsFromOrder(orderId: string): Promise<OrderItem[]> {
  */
 async function markProductEnrolled(order: Order, product: OrderItem): Promise<void> {
     try {
-        // Step 1: Find user by email
-        const userId = await findUserByEmail(order.customer_email);
+        // Step 1: Find or create user profile
+        const userId = await findOrCreateUserProfile(
+            order.customer_email,
+            order.customer_name,
+            order.customer_phone
+        );
 
         if (!userId) {
-            // Guest user - log for manual review
-            console.warn(`⚠️ Guest purchase detected: ${order.customer_email} - Product: ${product.product_name}`);
-            console.log(`📧 TODO: Send email invitation to ${order.customer_email} to signup and activate course`);
-
-            // Log to failed_enrollments for manual activation
-            await supabaseServer.from('failed_enrollments').insert({
-                order_id: order.order_id,
-                customer_email: order.customer_email,
-                error_message: 'Guest user - no profile found',
-                error_details: {
-                    product_id: product.product_id,
-                    product_name: product.product_name,
-                    reason: 'User needs to signup to activate enrollment'
-                },
-                retry_count: 0
-            });
-
-            return; // Skip enrollment for now
+            throw new Error(`Failed to get/create profile for ${order.customer_email}`);
         }
 
         // Step 2: Create enrollment record
@@ -111,7 +99,9 @@ async function markProductEnrolled(order: Order, product: OrderItem): Promise<vo
                 enrolled_at: new Date().toISOString(),
                 progress: 0,
                 completed_at: null
-            });
+            })
+            .select()
+            .single();
 
         if (error) {
             // Handle duplicate enrollment gracefully
@@ -133,26 +123,51 @@ async function markProductEnrolled(order: Order, product: OrderItem): Promise<vo
 }
 
 /**
- * Find user by email in profiles table
- * Returns user UUID or null if not found
+ * Find user by email or create profile for guest users
+ * Returns user UUID
  */
-async function findUserByEmail(email: string): Promise<string | null> {
+async function findOrCreateUserProfile(
+    email: string,
+    name: string,
+    phone: string
+): Promise<string | null> {
     try {
-        // Check profiles table (for registered users)
-        const { data: profile, error } = await supabaseServer
+        // 1. Check if profile exists
+        const { data: profile } = await supabaseServer
             .from('profiles')
             .select('id')
             .eq('email', email)
             .maybeSingle();
 
+        if (profile) {
+            console.log(`✅ Found existing profile for ${email}`);
+            return profile.id;
+        }
+
+        // 2. Profile doesn't exist - create it for guest purchase
+        console.log(`📝 Creating new profile for guest user: ${email}`);
+
+        const { data: newProfile, error } = await supabaseServer
+            .from('profiles')
+            .insert({
+                email,
+                name,
+                phone,
+                created_via: 'purchase'
+            })
+            .select('id')
+            .single();
+
         if (error) {
-            console.error('Error finding user by email:', error);
+            console.error('Error creating profile:', error);
             return null;
         }
 
-        return profile?.id || null;
+        console.log(`✅ Created new profile: ${newProfile?.id}`);
+        return newProfile?.id || null;
+
     } catch (error) {
-        console.error('Exception in findUserByEmail:', error);
+        console.error('Exception in findOrCreateUserProfile:', error);
         return null;
     }
 }
@@ -167,73 +182,69 @@ export async function sendEnrollmentEmail(
     orderDetails?: { order_id: string; total_amount: number }
 ): Promise<void> {
     try {
+        // Skip if no API key configured
+        if (!process.env.RESEND_API_KEY) {
+            console.log('⚠️ Resend not configured - skipping email (set RESEND_API_KEY)');
+            return;
+        }
+
+        const resend = new Resend(process.env.RESEND_API_KEY);
+
         const productList = products
-            .map(p => `• ${p.product_name}`)
+            .map(p => `• ${p.product_name} - ${p.price.toLocaleString('vi-VN')}₫`)
             .join('\n');
 
-        // TODO: Replace console.log with actual email service
-        console.log(`📧 Sending enrollment email to ${email}`);
-        console.log(`Products: ${products.length} items`);
+        console.log(`📧 Sending enrollment email to ${email}...`);
 
-        // Email template for future implementation:
-        const emailTemplate = {
+        const { error } = await resend.emails.send({
+            from: 'SheetApp <noreply@sheetapp.io.vn>',
             to: email,
             subject: '🎉 Thanh toán thành công - Khóa học đã được kích hoạt!',
             html: `
-                <h2>Cảm ơn bạn đã mua hàng tại SheetApp!</h2>
-                <p>Thanh toán của bạn đã được xác nhận thành công.</p>
-                
-                <h3>🎓 Khóa học đã kích hoạt:</h3>
-                <ul>
-                    ${products.map(p => `<li>${p.product_name}</li>`).join('')}
-                </ul>
-                
-                <p>
-                    <a href="${process.env.NEXT_PUBLIC_BASE_URL}/login" 
-                       style="background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-                        Đăng nhập và bắt đầu học ngay
-                    </a>
-                </p>
-                
-                <hr>
-                <p style="color: #666; font-size: 14px;">
-                    Mã đơn hàng: <strong>${orderDetails?.order_id}</strong><br>
-                    Tổng tiền: <strong>${orderDetails?.total_amount?.toLocaleString('vi-VN')} ₫</strong>
-                </p>
-            `,
-            text: `
-🎉 Thanh toán thành công!
-
-Cảm ơn bạn đã mua hàng tại SheetApp!
-
-Khóa học đã kích hoạt:
-${productList}
-
-Đăng nhập tại: ${process.env.NEXT_PUBLIC_BASE_URL}/login
-
-Mã đơn hàng: ${orderDetails?.order_id}
-Tổng tiền: ${orderDetails?.total_amount?.toLocaleString('vi-VN')} ₫
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <h2 style="color: #10b981; margin-bottom: 20px;">Cảm ơn bạn đã mua hàng tại SheetApp!</h2>
+                    <p style="font-size: 16px; line-height: 1.6;">Thanh toán của bạn đã được xác nhận thành công.</p>
+                    
+                    <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <h3 style="margin-top: 0; color: #1f2937;">🎓 Khóa học đã kích hoạt:</h3>
+                        <ul style="line-height: 1.8; color: #4b5563;">
+                            ${products.map(p => `<li><strong>${p.product_name}</strong> - ${p.price.toLocaleString('vi-VN')}₫</li>`).join('')}
+                        </ul>
+                    </div>
+                    
+                    <p style="text-align: center; margin: 30px 0;">
+                        <a href="${process.env.NEXT_PUBLIC_BASE_URL}/login" 
+                           style="background: #3b82f6; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+                            Đăng nhập và bắt đầu học ngay →
+                        </a>
+                    </p>
+                    
+                    <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
+                    
+                    <div style="background: #fef3c7; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                        <p style="margin: 0; color: #92400e; font-size: 14px;">
+                            <strong>📌 Quan trọng:</strong> Nếu bạn chưa có tài khoản, vui lòng đăng ký bằng email: <strong>${email}</strong>
+                        </p>
+                    </div>
+                    
+                    <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">
+                        <strong>Mã đơn hàng:</strong> ${orderDetails?.order_id}<br>
+                        <strong>Tổng tiền:</strong> ${orderDetails?.total_amount?.toLocaleString('vi-VN')} ₫
+                    </p>
+                    
+                    <p style="color: #9ca3af; font-size: 12px; margin-top: 30px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
+                        © 2026 SheetApp. Giải pháp Google Sheets & AppSheet chuyên nghiệp.
+                    </p>
+                </div>
             `
-        };
-
-        // Log email template for now
-        console.log('📧 Email template ready:', {
-            to: emailTemplate.to,
-            subject: emailTemplate.subject,
-            productCount: products.length
         });
 
-        /* 
-        // Uncomment when integrating with email service:
-        
-        const resend = new Resend(process.env.RESEND_API_KEY);
-        await resend.emails.send({
-            from: 'SheetApp <noreply@sheetapp.com>',
-            ...emailTemplate
-        });
-        
+        if (error) {
+            console.error('❌ Email send failed:', error);
+            throw error;
+        }
+
         console.log(`✅ Enrollment email sent to ${email}`);
-        */
 
     } catch (error) {
         console.error('❌ Email error:', error);
