@@ -45,7 +45,11 @@ export default function CheckoutPage() {
     const handleStep2Confirm = async () => {
         setIsProcessing(true);
         try {
-            const response = await fetch('/api/checkout', {
+            // Use explicit origin to ensure correct URL in all environments
+            const apiUrl = `${window.location.origin}/api/checkout`;
+            console.log('🔍 Checkout API URL:', apiUrl); // DEBUG: Verify URL is correct
+
+            const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
