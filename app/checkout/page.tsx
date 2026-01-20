@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, ShoppingCart, CheckCircle, Loader2, Package } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 
 export default function CheckoutPage() {
     const { items, totalAmount, totalItems, clearCart } = useCart();
@@ -19,6 +20,44 @@ export default function CheckoutPage() {
         email: '',
         phone: '',
     });
+
+    // Auto-fill customer info from logged-in user profile
+    useEffect(() => {
+        const loadUserProfile = async () => {
+            try {
+                // Get current user session
+                const { data: { session } } = await supabase.auth.getSession();
+
+                if (session?.user) {
+                    // Fetch user profile from profiles table
+                    const { data: profile, error } = await supabase
+                        .from('profiles')
+                        .select('full_name, name, email, phone')
+                        .eq('id', session.user.id)
+                        .single();
+
+                    if (!error && profile) {
+                        // Auto-fill customer info
+                        setCustomerInfo({
+                            name: profile.full_name || profile.name || '',
+                            email: profile.email || session.user.email || '',
+                            phone: profile.phone || '',
+                        });
+                    } else {
+                        // Fallback to user email from session
+                        setCustomerInfo(prev => ({
+                            ...prev,
+                            email: session.user.email || '',
+                        }));
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading user profile:', error);
+            }
+        };
+
+        loadUserProfile();
+    }, []);
 
     // Redirect if cart is empty
     useEffect(() => {
