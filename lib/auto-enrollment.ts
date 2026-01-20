@@ -57,12 +57,19 @@ export async function enrollUserInProducts(order: Order): Promise<void> {
 }
 
 /**
- * Get products from order_items table
+ * Get products from order_items table with product details including type
  */
 async function getProductsFromOrder(orderId: string): Promise<OrderItem[]> {
     const { data, error } = await supabaseServer
         .from('order_items')
-        .select('*')
+        .select(`
+            *,
+            products:product_id (
+                id,
+                name,
+                type
+            )
+        `)
         .eq('order_id', orderId);
 
     if (error) {
@@ -70,13 +77,20 @@ async function getProductsFromOrder(orderId: string): Promise<OrderItem[]> {
         return [];
     }
 
-    return data || [];
+    // Transform data to include product details
+    return (data || []).map((item: any) => ({
+        product_id: item.product_id,
+        product_name: item.products?.name || 'Unknown Product',
+        product_type: item.products?.type || 'course', // Default to course if missing
+        quantity: item.quantity,
+        price: item.price_at_purchase
+    }));
 }
 
 /**
- * Mark product as enrolled - creates actual enrollment record
+ * Mark product as enrolled/activated - routes to course or service activation
  */
-async function markProductEnrolled(order: Order, product: OrderItem): Promise<void> {
+async function markProductEnrolled(order: Order, product: any): Promise<void> {
     try {
         // Step 1: Find or create user profile
         const userId = await findOrCreateUserProfile(
@@ -89,36 +103,99 @@ async function markProductEnrolled(order: Order, product: OrderItem): Promise<vo
             throw new Error(`Failed to get/create profile for ${order.customer_email}`);
         }
 
-        // Step 2: Create enrollment record
-        const { error } = await supabaseServer
-            .from('enrollments')
-            .insert({
-                user_id: userId,
-                product_id: product.product_id,
-                order_id: order.order_id,
-                enrolled_at: new Date().toISOString(),
-                progress: 0,
-                completed_at: null
-            })
-            .select()
-            .single();
+        // Step 2: Activate based on product type
+        const productType = product.product_type || 'course';
 
-        if (error) {
-            // Handle duplicate enrollment gracefully
-            if (error.code === '23505') { // Unique constraint violation
-                console.log(`ℹ️ User already enrolled in ${product.product_name}`);
-                return;
-            }
-
-            console.error(`❌ Error enrolling ${order.customer_email} in product ${product.product_id}:`, error);
-            throw error;
+        if (productType === 'course') {
+            await activateCourse(userId, product, order.order_id);
+        } else if (productType === 'service') {
+            await activateService(userId, product, order);
+        } else {
+            console.warn(`⚠️ Unknown product type: ${productType}, defaulting to course activation`);
+            await activateCourse(userId, product, order.order_id);
         }
 
-        console.log(`✅ Enrolled: ${order.customer_email} in ${product.product_name}`);
-
     } catch (error) {
-        console.error(`Error enrolling in product ${product.product_id}:`, error);
+        console.error(`❌ Error activating product ${product.product_id}:`, error);
         throw error;
+    }
+}
+
+/**
+ * Activate a course - create enrollment record
+ */
+async function activateCourse(
+    userId: string,
+    product: any,
+    orderId: string
+): Promise<void> {
+    const { error } = await supabaseServer
+        .from('enrollments')
+        .insert({
+            user_id: userId,
+            product_id: product.product_id,
+            order_id: orderId,
+            enrolled_at: new Date().toISOString(),
+            progress: 0,
+            completed_at: null
+        })
+        .select()
+        .single();
+
+    if (error) {
+        // Handle duplicate enrollment gracefully
+        if (error.code === '23505') { // Unique constraint violation
+            console.log(`ℹ️ User already enrolled in course: ${product.product_name}`);
+            return;
+        }
+
+        console.error(`❌ Error enrolling in course ${product.product_id}:`, error);
+        throw error;
+    }
+
+    console.log(`✅ Course activated: ${product.product_name}`);
+}
+
+/**
+ * Activate a service - create service activation record
+ */
+async function activateService(
+    userId: string,
+    product: any,
+    order: Order
+): Promise<void> {
+    const { error } = await supabaseServer
+        .from('service_activations')
+        .insert({
+            user_id: userId,
+            product_id: product.product_id,
+            order_id: order.order_id,
+            status: 'pending',
+            customer_notes: null,
+            created_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+    if (error) {
+        // Handle duplicate activation gracefully
+        if (error.code === '23505') { // Unique constraint violation
+            console.log(`ℹ️ Service already activated: ${product.product_name}`);
+            return;
+        }
+
+        console.error(`❌ Error activating service ${product.product_id}:`, error);
+        throw error;
+    }
+
+    console.log(`✅ Service activated (pending): ${product.product_name}`);
+
+    // Notify admin about new service that needs handling
+    try {
+        await notifyAdminAboutNewService(userId, product, order.order_id);
+    } catch (notifyError) {
+        console.error('⚠️ Failed to notify admin (non-critical):', notifyError);
+        // Don't throw - notification is nice-to-have
     }
 }
 
@@ -175,6 +252,111 @@ async function findOrCreateUserProfile(
 /**
  * Send enrollment confirmation email
  * TODO: Integrate with Resend or SendGrid
+ */
+/**
+ * Send notification to admin about new service activation
+ */
+async function notifyAdminAboutNewService(
+    userId: string,
+    product: any,
+    orderId: string
+): Promise<void> {
+    try {
+        // Skip if no admin email configured
+        if (!process.env.ADMIN_EMAIL) {
+            console.log('⚠️ ADMIN_EMAIL not configured - skipping admin notification');
+            return;
+        }
+
+        // Skip if no Resend API key
+        if (!process.env.RESEND_API_KEY) {
+            console.log('⚠️ RESEND_API_KEY not configured - skipping admin notification');
+            return;
+        }
+
+        // Get user profile details
+        const { data: profile } = await supabaseServer
+            .from('profiles')
+            .select('name, email, phone')
+            .eq('id', userId)
+            .single();
+
+        const resend = new Resend(process.env.RESEND_API_KEY);
+
+        await resend.emails.send({
+            from: 'SheetApp System <system@sheetapp.io.vn>',
+            to: process.env.ADMIN_EMAIL,
+            subject: `🔔 Dịch vụ mới cần xử lý - ${product.product_name}`,
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <h2 style="color: #ef4444; margin-bottom: 20px;">🔔 Dịch vụ mới cần assign</h2>
+                    
+                    <div style="background: #fef3c7; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+                        <p style="margin: 0; color: #92400e; font-size: 14px;">
+                            <strong>⚡ Hành động cần thiết:</strong> Assign dịch vụ này cho staff và liên hệ khách hàng trong vòng 24h.
+                        </p>
+                    </div>
+                    
+                    <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <h3 style="margin-top: 0; color: #1f2937;">📋 Thông tin dịch vụ:</h3>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                <td style="padding: 8px 0; color: #6b7280; width: 40%;"><strong>Dịch vụ:</strong></td>
+                                <td style="padding: 8px 0; color: #1f2937;">${product.product_name}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; color: #6b7280;"><strong>Mã đơn hàng:</strong></td>
+                                <td style="padding: 8px 0; color: #1f2937;">${orderId}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; color: #6b7280;"><strong>Giá trị:</strong></td>
+                                <td style="padding: 8px 0; color: #1f2937;">${product.price?.toLocaleString('vi-VN')} ₫</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <h3 style="margin-top: 0; color: #1f2937;">👤 Thông tin khách hàng:</h3>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                <td style="padding: 8px 0; color: #6b7280; width: 40%;"><strong>Họ tên:</strong></td>
+                                <td style="padding: 8px 0; color: #1f2937;">${profile?.name || 'N/A'}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; color: #6b7280;"><strong>Email:</strong></td>
+                                <td style="padding: 8px 0; color: #1f2937;"><a href="mailto:${profile?.email}" style="color: #3b82f6;">${profile?.email}</a></td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; color: #6b7280;"><strong>SĐT:</strong></td>
+                                <td style="padding: 8px 0; color: #1f2937;">${profile?.phone || 'Chưa cung cấp'}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <p style="text-align: center; margin: 30px 0;">
+                        <a href="${process.env.NEXT_PUBLIC_BASE_URL}/admin/services" 
+                           style="background: #3b82f6; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+                            Xem trong Admin Dashboard →
+                        </a>
+                    </p>
+                    
+                    <p style="color: #9ca3af; font-size: 12px; margin-top: 30px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
+                        Email tự động từ hệ thống SheetApp. Vui lòng không reply email này.
+                    </p>
+                </div>
+            `
+        });
+
+        console.log(`📧 Admin notified about new service: ${product.product_name}`);
+
+    } catch (error) {
+        console.error('❌ Failed to send admin notification:', error);
+        // Don't throw - notification is nice-to-have, not critical
+    }
+}
+
+/**
+ * Send enrollment confirmation email to customer
  */
 export async function sendEnrollmentEmail(
     email: string,

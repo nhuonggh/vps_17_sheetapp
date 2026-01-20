@@ -1,9 +1,9 @@
 # SheetApp Database Schema - Table Structure
 
 > **Purpose:** Document toàn bộ cấu trúc database của SheetApp  
-> **Last Updated:** 2026-01-13 13:32  
+> **Last Updated:** 2026-01-17 22:01  
 > **Source:** Supabase SQL Query Export  
-> **Total Tables:** 21
+> **Total Tables:** 23
 
 ---
 
@@ -11,10 +11,10 @@
 
 | Metric | Count |
 |--------|-------|
-| Total Tables | 21 |
-| Total Foreign Keys | 10 |
-| Tables with RLS | 21 (all) |
-| Custom Indexes | 10+ |
+| Total Tables | 23 |
+| Total Foreign Keys | 12 |
+| Tables with RLS | 23 (all) |
+| Custom Indexes | 50+ |
 
 ### All Tables
 
@@ -26,21 +26,23 @@
 | 4 | `chapters` | Chương học trong khóa học |
 | 5 | `comments` | Bình luận bài viết |
 | 6 | `coupons` | Mã giảm giá |
-| 7 | `feedbacks` | Phản hồi từ người dùng |
-| 8 | `filters` | Bộ lọc/tags cho products |
-| 9 | `instructors` | Thông tin giảng viên |
-| 10 | `leads` | Lead/khách hàng tiềm năng |
-| 11 | `lessons` | Bài học trong chapter |
-| 12 | `notifications` | Thông báo cho users |
-| 13 | **`order_items`** | **Chi tiết sản phẩm trong đơn hàng** |
-| 14 | **`orders`** | **Đơn hàng chính** |
-| 15 | `partners` | Đối tác |
-| 16 | `post_categories` | Danh mục bài viết |
-| 17 | `posts` | Bài viết/blog |
-| 18 | `products` | Sản phẩm/khóa học |
-| 19 | `profiles` | Thông tin người dùng |
-| 20 | `testimonials` | Đánh giá/review |
-| 21 | **`transactions`** | **Giao dịch thanh toán** |
+| 7 | **`enrollments`** | **User enrollments in courses/products after payment** |
+| 8 | **`failed_enrollments`** | **Failed auto-enrollments for manual review and retry** |
+| 9 | `feedbacks` | Phản hồi từ người dùng |
+| 10 | `filters` | Bộ lọc/tags cho products |
+| 11 | `instructors` | Thông tin giảng viên |
+| 12 | `leads` | Lead/khách hàng tiềm năng |
+| 13 | `lessons` | Bài học trong chapter |
+| 14 | `notifications` | Thông báo cho users |
+| 15 | **`order_items`** | **Chi tiết sản phẩm trong đơn hàng** |
+| 16 | **`orders`** | **Đơn hàng chính** |
+| 17 | `partners` | Đối tác |
+| 18 | `post_categories` | Danh mục bài viết |
+| 19 | `posts` | Bài viết/blog |
+| 20 | `products` | Sản phẩm/khóa học |
+| 21 | `profiles` | Thông tin người dùng |
+| 22 | `testimonials` | Đánh giá/review |
+| 23 | **`transactions`** | **Giao dịch thanh toán** |
 
 ---
 
@@ -96,12 +98,13 @@
 | `order_id` | uuid | NO | - | **FK to orders.id** |
 | `product_id` | bigint | NO | - | FK to products.id |
 | `price_at_purchase` | numeric | NO | - | Giá tại thời điểm mua |
-| `created_at` | timestamptz | NO | now() | Th ời gian tạo |
+| `created_at` | timestamptz | NO | now() | Thời gian tạo |
+| `quantity` | integer | NO | 1 | Số lượng sản phẩm |
 
 **Key Points:**
 - ✅ FK: `order_id` → `orders.id` (UUID)
 - ✅ FK: `product_id` → `products.id`
-- ❌ **KHÔNG CÓ cột `quantity`!**
+- ✅ **NOW HAS `quantity` column!**
 
 ---
 
@@ -138,6 +141,8 @@
 |------------|--------|---|----------|--------|------------|
 | `chapters` | product_id | → | `products` | id | chapters_product_id_fkey |
 | `comments` | post_id | → | `posts` | id | comments_post_id_fkey |
+| **`enrollments`** | **user_id** | → | **`profiles`** | **id** | enrollments_user_id_fkey |
+| **`enrollments`** | **product_id** | → | **`products`** | **id** | enrollments_product_id_fkey |
 | `lessons` | chapter_id | → | `chapters` | id | lessons_chapter_id_fkey |
 | **`order_items`** | **order_id** | → | **`orders`** | **id** | order_items_order_id_fkey |
 | **`order_items`** | **product_id** | → | **`products`** | **id** | order_items_product_id_fkey |
@@ -241,11 +246,77 @@ ADD COLUMN items JSONB;
 
 ---
 
+## 🎓 ENROLLMENTS & COURSE MANAGEMENT
+
+### `enrollments` Table
+
+**Purpose:** User enrollments in courses/products after successful payment
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | bigint | NO | nextval('enrollments_id_seq') | Primary key |
+| `user_id` | uuid | NO | - | FK to profiles.id |
+| `product_id` | bigint | NO | - | FK to products.id |
+| `order_id` | text | NO | - | FK to orders.order_id (TEXT) |
+| `enrolled_at` | timestamptz | YES | now() | Enrollment timestamp |
+| `progress` | integer | YES | 0 | Course completion progress (0-100) |
+| `completed_at` | timestamptz | YES | - | Completion timestamp |
+
+**Key Points:**
+- ✅ FK: `user_id` → `profiles.id`
+- ✅ FK: `product_id` → `products.id`
+- ✅ Links to `orders.order_id` (TEXT not UUID)
+- ✅ Tracks course progress (0-100%)
+- ✅ Auto-enrolled via PayOS webhook
+
+**Indexes:**
+- `enrollments_pkey` (PRIMARY KEY on `id`)
+- `idx_enrollments_user_id` (on `user_id`)
+- `idx_enrollments_product_id` (on `product_id`)
+- `idx_enrollments_order_id` (on `order_id`)
+- `idx_enrollments_enrolled_at` (on `enrolled_at`)
+- `unique_user_product` (UNIQUE on `user_id, product_id`)
+
+---
+
+### `failed_enrollments` Table
+
+**Purpose:** Failed auto-enrollments for manual review and retry
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | bigint | NO | nextval('failed_enrollments_id_seq') | Primary key |
+| `order_id` | text | NO | - | Order ID that failed |
+| `customer_email` | text | YES | - | Customer email |
+| `error_message` | text | YES | - | Error message |
+| `error_details` | jsonb | YES | - | Full error details (JSON) |
+| `retry_count` | integer | YES | 0 | Number of retry attempts |
+| `last_retry_at` | timestamptz | YES | - | Last retry timestamp |
+| `resolved_at` | timestamptz | YES | - | When issue was resolved |
+| `created_at` | timestamptz | YES | now() | When error occurred |
+
+**Key Points:**
+- ✅ Logs failed enrollments from webhook
+- ✅ Stores error details for debugging
+- ✅ Tracks retry attempts
+- ✅ Can be manually resolved
+
+**Indexes:**
+- `failed_enrollments_pkey` (PRIMARY KEY on `id`)
+- `idx_failed_enrollments_order_id` (on `order_id`)
+- `idx_failed_enrollments_resolved` (on `resolved_at`)
+- `idx_failed_enrollments_created` (on `created_at`)
+- `idx_failed_enrollments_email` (on `customer_email`)
+
+---
+
 ## 🔄 Update History
 
 | Date | Change | By |
 |------|--------|-----|
 | 2026-01-13 | Initial schema export | AI Assistant |
+| 2026-01-17 | Added enrollments & failed_enrollments tables | AI Assistant |
+| 2026-01-17 | Updated order_items with quantity column | AI Assistant |
 
 ---
 

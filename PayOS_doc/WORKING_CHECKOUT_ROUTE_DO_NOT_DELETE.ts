@@ -111,14 +111,12 @@ export async function POST(request: NextRequest) {
         // Try to create PayOS payment link
         let paymentLinkData: any = null;
         let qrCode: string | null = null;
-        let payosOrderCode: number | null = null; // ✅ Store orderCode for database
 
         if (isPayOSConfigured()) {
             console.log('✅ PayOS configured - creating payment link via direct API...');
 
             // Use Unix timestamp as orderCode (required integer by PayOS)
             const orderCodeInt = Math.floor(Date.now() / 1000);
-            payosOrderCode = orderCodeInt; // ✅ Save for database
             const domain = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
 
             const paymentResult = await createPaymentLinkDirect({
@@ -171,7 +169,6 @@ export async function POST(request: NextRequest) {
                 payment_link_id: paymentLinkData?.paymentLinkId || null,
                 payment_url: paymentLinkData?.checkoutUrl || null,
                 payment_expires_at: paymentLinkData ? new Date(Date.now() + 15 * 60 * 1000).toISOString() : null,
-                payos_order_code: payosOrderCode, // ✅ NEW: Save PayOS orderCode
             })
             .select()
             .single();

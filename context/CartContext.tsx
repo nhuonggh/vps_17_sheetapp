@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { supabase } from '@/lib/supabase';
 
 // 1. Định nghĩa Type cho sản phẩm trong giỏ
 export interface CartItem {
@@ -64,7 +65,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [items, isMounted]);
 
-  const addToCart = (product: ProductInput) => {
+  const addToCart = async (product: ProductInput) => {
+    // Check if user is logged in
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      // Redirect to login with return URL and message
+      if (typeof window !== 'undefined') {
+        const currentPath = window.location.pathname;
+        const message = encodeURIComponent('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng');
+        window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}&message=${message}`;
+      }
+      return;
+    }
+
     setItems((currentItems) => {
       const existingItem = currentItems.find((item) => item.id === product.id);
 
@@ -101,6 +115,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const clearCart = () => {
     setItems([]);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('sheetapp_cart');
+    }
   };
 
   const totalAmount = items.reduce((total, item) => total + item.price * item.quantity, 0);

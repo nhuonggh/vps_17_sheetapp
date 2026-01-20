@@ -1,14 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 
-export default function LoginPage() {
+function LoginPageContent() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const redirectUrl = searchParams?.get('redirect');
+    const messageParam = searchParams?.get('message');
     const { executeRecaptcha } = useGoogleReCaptcha();
 
     // Trạng thái: 'login' | 'register' | 'forgot'
@@ -17,7 +20,7 @@ export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(messageParam ? { type: 'error', text: decodeURIComponent(messageParam) } : null);
     const [showPassword, setShowPassword] = useState(false);
 
     // 1. Xử lý Đăng nhập Google
@@ -67,15 +70,16 @@ export default function LoginPage() {
             // CAPTCHA passed, proceed with login
             const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-            if (error) {
-                setMessage({ type: 'error', text: 'Email hoặc mật khẩu không chính xác.' });
-                setLoading(false);
+            if (error) throw error;
+
+            // Success: redirect to return URL or home
+            if (redirectUrl) {
+                router.push(decodeURIComponent(redirectUrl));
             } else {
-                router.push('/'); // Thành công -> Về trang chủ
-                router.refresh(); // Refresh để Navbar cập nhật avatar
+                router.push('/');
             }
-        } catch (error) {
-            setMessage({ type: 'error', text: 'An error occurred. Please try again.' });
+        } catch (error: any) {
+            setMessage({ type: 'error', text: error.message || 'An error occurred. Please try again.' });
             setLoading(false);
         }
     };
@@ -306,5 +310,20 @@ export default function LoginPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <Loader2 className="w-8 h-8 animate-spin text-emerald-600 mx-auto mb-4" />
+                    <p className="text-gray-600">Đang tải...</p>
+                </div>
+            </div>
+        }>
+            <LoginPageContent />
+        </Suspense>
     );
 }

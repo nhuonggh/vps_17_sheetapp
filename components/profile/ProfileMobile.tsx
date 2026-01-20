@@ -8,6 +8,7 @@ import {
     Ticket, UserPlus, MessageSquarePlus, Copy, Check, ShieldCheck, FileText, Target
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useCart } from '@/context/CartContext';
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 
 // --- INTERFACES ---
@@ -25,6 +26,7 @@ interface AffiliateRequest {
 }
 
 export default function ProfileMobile({ user }: { user: User | null }) {
+    const { clearCart } = useCart();
     const { executeRecaptcha } = useGoogleReCaptcha();
     const [activeTab, setActiveTab] = useState('info');
     const [showEditModal, setShowEditModal] = useState(false);
@@ -60,20 +62,30 @@ export default function ProfileMobile({ user }: { user: User | null }) {
 
     // --- 1. FETCH DATA TỪ SUPABASE ---
     useEffect(() => {
-        if (user) {
-            // Load User Info
-            setFormData({
-                fullName: user.user_metadata?.full_name || '',
-                phone: user.user_metadata?.phone || '',
-                job: user.user_metadata?.job || '',
-                gender: user.user_metadata?.gender || 'Nam',
-            });
+        const loadUserData = async () => {
+            if (!user) return;
+
+            // Load profile from profiles table
+            const { data: profileData } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', user.id)
+                .single();
+
+            if (profileData) {
+                setFormData({
+                    fullName: profileData.full_name || profileData.name || '',
+                    phone: profileData.phone || '',
+                    job: profileData.job || '',
+                    gender: profileData.gender || 'Nam',
+                });
+            }
 
             // Load Bookings
             const fetchBookings = async () => {
                 const { data } = await supabase.from('bookings')
                     .select('*')
-                    .or(`user_id.eq.${user.id},phone.eq.${user.user_metadata?.phone}`)
+                    .or(`user_id.eq.${user.id},phone.eq.${profileData?.phone}`)
                     .order('created_at', { ascending: false });
                 if (data) setBookings(data);
             };
@@ -111,12 +123,15 @@ export default function ProfileMobile({ user }: { user: User | null }) {
             fetchNotifications();
             fetchCoupons();
             checkAffiliate();
-        }
+        };
+
+        loadUserData();
     }, [user]);
 
     // --- 2. ACTIONS ---
 
     const handleLogout = async () => {
+        clearCart();
         await supabase.auth.signOut();
         window.location.href = '/';
     };
@@ -124,16 +139,44 @@ export default function ProfileMobile({ user }: { user: User | null }) {
     const handleUpdateProfile = async () => {
         setIsLoading(true);
         try {
-            const { error } = await supabase.auth.updateUser({
-                data: { ...formData }
+            if (!user) throw new Error('User not logged in');
+
+            // Update profiles table
+            const { error: profileError } = await supabase
+                .from('profiles')
+                .update({
+                    full_name: formData.fullName,
+                    name: formData.fullName,
+                    phone: formData.phone,
+                    job: formData.job,
+                    gender: formData.gender,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', user.id);
+
+            if (profileError) {
+                console.error('Profile update error:', profileError);
+                throw profileError;
+            }
+
+            // Also update auth.users metadata
+            const { error: authError } = await supabase.auth.updateUser({
+                data: {
+                    full_name: formData.fullName,
+                    phone: formData.phone,
+                    job: formData.job,
+                    gender: formData.gender
+                }
             });
-            if (error) throw error;
+
+            if (authError) throw authError;
+
             alert("Cập nhật thông tin thành công!");
             setShowEditModal(false);
             window.location.reload();
-        } catch (error) {
+        } catch (error: any) {
             console.error("Lỗi update profile:", error);
-            alert("Có lỗi xảy ra, vui lòng thử lại.");
+            alert(error.message || "Có lỗi xảy ra, vui lòng thử lại.");
         } finally {
             setIsLoading(false);
         }
@@ -361,7 +404,7 @@ export default function ProfileMobile({ user }: { user: User | null }) {
                                     </div>
 
                                     <div className={`p-4 rounded-lg flex items-center gap-3 ${affiliateRequest.status === 'approved' ? 'bg-emerald-50 text-emerald-800' :
-                                            affiliateRequest.status === 'rejected' ? 'bg-red-50 text-red-800' : 'bg-yellow-50 text-yellow-800'
+                                        affiliateRequest.status === 'rejected' ? 'bg-red-50 text-red-800' : 'bg-yellow-50 text-yellow-800'
                                         }`}>
                                         <ShieldCheck className="w-6 h-6 flex-shrink-0" />
                                         <div>
@@ -518,16 +561,24 @@ export default function ProfileMobile({ user }: { user: User | null }) {
                                     <option value="">-- Chọn nghề nghiệp --</option>
                                     <option value="Kế toán">Kế toán / Tài chính</option>
                                     <option value="Nhân sự">Nhân sự / Hành chính</option>
-                                    <option value="IT">IT / Lập trình</option>
+                                    <option value="IT">IT / Lập trình viên</option>
                                     <option value="Kinh doanh">Kinh doanh / Sale</option>
+                                    <option value="Marketing">Marketing / Truyền thông</option>
+                                    <option value="Giáo dục">Giáo dục / Giảng viên</option>
+                                    <option value="Y tế">Y tế / Dược</option>
+                                    <option value="Luật">Luật sư / Pháp lý</option>
+                                    <option value="Xây dựng">Xây dựng / Kiến trúc</option>
+                                    <option value="Sinh viên">Sinh viên</option>
+                                    <option value="Freelancer">Freelancer</option>
                                     <option value="Khác">Khác</option>
                                 </select>
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 mb-1">Giới tính</label>
-                                <div className="flex gap-4">
+                                <div className="flex gap-3">
                                     <label className="flex items-center gap-2 text-sm text-gray-700"><input type="radio" name="gender" value="Nam" checked={formData.gender === 'Nam'} onChange={e => setFormData({ ...formData, gender: e.target.value })} className="text-emerald-600 focus:ring-emerald-500" /> Nam</label>
                                     <label className="flex items-center gap-2 text-sm text-gray-700"><input type="radio" name="gender" value="Nữ" checked={formData.gender === 'Nữ'} onChange={e => setFormData({ ...formData, gender: e.target.value })} className="text-emerald-600 focus:ring-emerald-500" /> Nữ</label>
+                                    <label className="flex items-center gap-2 text-sm text-gray-700"><input type="radio" name="gender" value="Khác" checked={formData.gender === 'Khác'} onChange={e => setFormData({ ...formData, gender: e.target.value })} className="text-emerald-600 focus:ring-emerald-500" /> Khác</label>
                                 </div>
                             </div>
                             <button onClick={handleUpdateProfile} disabled={isLoading} className="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl mt-2 flex items-center justify-center gap-2 hover:bg-emerald-700 disabled:opacity-50 transition-colors">

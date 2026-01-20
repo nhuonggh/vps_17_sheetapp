@@ -1,0 +1,55 @@
+// ============================================================================
+// FILE 1: components/profile/ProfileDesktop.tsx
+// ============================================================================
+
+// TÌM ĐOẠN CODE NÀY (khoảng line 258-272):
+
+{/* CONTENT - INFO */}
+{activeTab === 'info' && (
+    <div className="grid grid-cols-2 gap-6 max-w-2xl">
+        <div className="col-span-2">
+            <label className="block text-xs font-bold text-gray-500 mb-1">
+                Họ và tên đầy đủ
+            </label>
+            <input 
+                type="text" 
+                placeholder="Nhập họ và tên đầy đủ..." 
+                className="w-full p-3 border border-gray-200 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                value={formData.fullName}
+                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+            />
+        </div>
+
+// THAY BẰNG:
+
+{/* CONTENT - INFO */}
+{activeTab === 'info' && (
+    <div className="grid grid-cols-2 gap-6 max-w-2xl">
+        {/* Username (readonly) */}
+        <div>
+            <label className="block text-xs font-bold text-gray-500 mb-1">Tên người dùng</label>
+            <div className="p-3 bg-gray-50 rounded-lg text-gray-800 font-medium border border-gray-200 flex items-center justify-between">
+                <span>{user?.email?.split('@')[0]}</span>
+                {profile?.created_via && profile.created_via !== 'email' && profile.created_via !== 'manual' && (
+                    <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full flex items-center gap-1">
+                        {profile.created_via === 'google.com' && '🔵 Google'}
+                        {profile.created_via === 'facebook.com' && '🔵 Facebook'}
+                    </span>
+                )}
+            </div>
+            <p className="text-xs text-gray-400 mt-1">Tên người dùng từ email</p>
+        </div>
+
+        {/* Full Name (editable) */}
+        <div>
+            <label className="block text-xs font-bold text-gray-500 mb-1">
+                Họ và tên đầy đủ
+            </label>
+            <input 
+                type="text" 
+                placeholder="Nhập họ và tên đầy đủ..." 
+                className="w-full p-3 border border-gray-200 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                value={formData.fullName}
+                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+            />
+        </div>
