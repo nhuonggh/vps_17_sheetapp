@@ -1,4 +1,3 @@
-import DOMPurify from 'isomorphic-dompurify';
 import validator from 'validator';
 
 export interface ValidationResult {
@@ -46,7 +45,8 @@ export function validateName(name: string): { valid: boolean; sanitized: string;
         return { valid: false, sanitized: '', error: 'Name can only contain letters, spaces, and hyphens' };
     }
 
-    const sanitized = DOMPurify.sanitize(trimmed);
+    // Use validator.escape() for XSS protection (safer than DOMPurify for server-side)
+    const sanitized = validator.escape(trimmed);
 
     return { valid: true, sanitized };
 }
@@ -82,11 +82,9 @@ export function validateMessage(message: string, maxLength = 1000): { valid: boo
         return { valid: false, sanitized: '', error: 'Spam content detected' };
     }
 
-    // Sanitize HTML but keep basic formatting
-    const sanitized = DOMPurify.sanitize(trimmed, {
-        ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'p', 'br'],
-        ALLOWED_ATTR: [],
-    });
+    // Sanitize to prevent XSS - validator.escape converts special chars to HTML entities
+    // This is safer for server-side validation than DOMPurify
+    const sanitized = validator.escape(trimmed);
 
     return { valid: true, sanitized };
 }
@@ -173,10 +171,10 @@ export function validateFormInput(input: {
 
 /**
  * Sanitize HTML content for display
+ * Uses validator.escape() to prevent XSS attacks
  */
 export function sanitizeHtml(html: string, allowedTags?: string[]): string {
-    return DOMPurify.sanitize(html, {
-        ALLOWED_TAGS: allowedTags || ['b', 'i', 'em', 'strong', 'p', 'br', 'ul', 'ol', 'li'],
-        ALLOWED_ATTR: [],
-    });
+    // validator.escape() converts HTML special characters to entities
+    // This prevents XSS attacks by ensuring user input is not executed as HTML/JS
+    return validator.escape(html);
 }
