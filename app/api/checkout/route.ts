@@ -10,9 +10,22 @@ import { isPayOSConfigured } from '@/lib/payos';
  * Fallback to static QR code if PayOS is not configured
  */
 export async function POST(request: NextRequest) {
+    // Log request arrival
+    console.log('🚀 ============ CHECKOUT API CALLED ============');
+    console.log('Timestamp:', new Date().toISOString());
+    console.log('Method:', request.method);
+    console.log('URL:', request.url);
+    console.log('Headers:', Object.fromEntries(request.headers.entries()));
+    console.log('=============================================');
+
     try {
         const body = await request.json();
         const { items, customer } = body;
+
+        console.log('📦 Request body received:', {
+            itemsCount: items?.length,
+            customerEmail: customer?.email
+        });
 
         // Validate input
         if (!items || !Array.isArray(items) || items.length === 0) {
@@ -230,9 +243,28 @@ export async function POST(request: NextRequest) {
         });
 
     } catch (error) {
-        console.error('❌ Checkout error:', error);
+        // Enhanced error logging for debugging
+        console.error('❌ ============ CHECKOUT ERROR ============');
+        console.error('Error type:', error?.constructor?.name);
+        console.error('Error message:', error instanceof Error ? error.message : String(error));
+        console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+        console.error('Timestamp:', new Date().toISOString());
+        console.error('==========================================');
+
+        // Detailed error response with more context
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorType = error?.constructor?.name || 'Unknown';
+
         return NextResponse.json(
-            { error: 'Lỗi hệ thống: ' + (error instanceof Error ? error.message : 'Unknown') },
+            {
+                success: false,
+                error: 'Lỗi hệ thống',
+                details: errorMessage,
+                errorType: errorType,
+                timestamp: new Date().toISOString(),
+                // Include stack trace in development only
+                ...(process.env.NODE_ENV === 'development' && error instanceof Error && { stack: error.stack })
+            },
             { status: 500 }
         );
     }
