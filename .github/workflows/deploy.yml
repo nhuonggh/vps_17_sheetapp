@@ -1,0 +1,54 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.REGISTRY_URL }}
+          username: ${{ secrets.REGISTRY_USER }}
+          password: ${{ secrets.REGISTRY_PASS }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.REGISTRY_URL }}/sheetapp:${{ github.sha }}
+            ${{ secrets.REGISTRY_URL }}/sheetapp:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy on VPS
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            docker login ${{ secrets.REGISTRY_URL }} -u ${{ secrets.REGISTRY_USER }} -p ${{ secrets.REGISTRY_PASS }}
+            docker pull ${{ secrets.REGISTRY_URL }}/sheetapp:latest
+            docker stop sheetapp || true
+            docker rm sheetapp || true
+            docker run -d \
+              --name sheetapp \
+              --restart always \
+              --network pgnet \
+              -p 3017:3000 \
+              --env-file /home/deploy_sheetapp/app/.env \
+              ${{ secrets.REGISTRY_URL }}/sheetapp:latest
+            docker image prune -f
