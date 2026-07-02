@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseServer } from '@/lib/supabase-server';
+import { query } from '@/lib/db';
 
 /**
  * GET /api/payment/status/[orderId]
@@ -21,13 +21,13 @@ export async function GET(
         }
 
         // Fetch order from database
-        const { data: order, error } = await supabaseServer
-            .from('orders')
-            .select('order_id, status, total_amount, paid_at, transaction_id, payment_expires_at')
-            .eq('order_id', orderId)
-            .single();
+        const result = await query(
+            'SELECT order_id, status, total_amount, paid_at, transaction_id, payment_expires_at FROM orders WHERE order_id = $1 LIMIT 1',
+            [orderId]
+        );
+        const order = result.rows[0];
 
-        if (error || !order) {
+        if (!order) {
             return NextResponse.json(
                 { error: 'Order not found' },
                 { status: 404 }

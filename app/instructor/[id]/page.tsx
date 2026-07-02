@@ -1,18 +1,17 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { query } from '@/lib/db';
 import { Mail, Phone, MapPin, Briefcase, CheckCircle2, GraduationCap, ArrowLeft, BookOpen } from 'lucide-react';
 
 async function getInstructor(id: string) {
-  const { data, error } = await supabase.from('instructors').select('*').eq('id', id).single();
-  if (error || !data) return null;
-  return data;
+  const result = await query('SELECT * FROM instructors WHERE id = $1 LIMIT 1', [id]);
+  return result.rows[0] || null;
 }
 
 // Lấy danh sách khóa học của giảng viên này
 async function getInstructorCourses(instructorId: string) {
-  const { data } = await supabase.from('products').select('*').eq('instructor_id', instructorId);
-  return data || [];
+  const result = await query('SELECT * FROM products WHERE instructor_id = $1', [instructorId]);
+  return result.rows;
 }
 
 export default async function InstructorPage({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ from?: string }> }) {

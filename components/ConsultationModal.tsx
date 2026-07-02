@@ -2,7 +2,6 @@
 
 import { X, Calendar, User, Phone, MessageSquare } from 'lucide-react';
 import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 
 export default function ConsultationModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
@@ -43,15 +42,17 @@ export default function ConsultationModal({ isOpen, onClose }: { isOpen: boolean
       }
 
       // CAPTCHA passed, proceed with form submission
-      const { error } = await supabase.from('leads').insert([
-        {
-          full_name: formData.fullName,
+      const leadRes = await fetch('/api/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName: formData.fullName,
           phone: formData.phone,
-          message: formData.message
-        }
-      ]);
+          message: formData.message,
+        }),
+      });
 
-      if (error) throw error;
+      if (!leadRes.ok) throw new Error('Failed to submit lead');
 
       alert("Gửi yêu cầu thành công! Chúng tôi sẽ liên hệ lại sớm.");
       setFormData({ fullName: '', phone: '', message: '' }); // Reset form

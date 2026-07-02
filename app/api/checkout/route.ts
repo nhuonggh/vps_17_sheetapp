@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseServer } from '@/lib/supabase-server';
+import { query } from '@/lib/db';
 import { validateFormInput } from '@/lib/validators';
 import { createPaymentLinkDirect } from '@/lib/payos-direct';
 import { isPayOSConfigured } from '@/lib/payos';
@@ -59,13 +59,14 @@ export async function POST(request: NextRequest) {
         // Fetch real prices from database
         const productIds = items.map((item: any) => item.product_id || item.id);
 
-        const { data: products, error: fetchError } = await supabaseServer
-            .from('products')
-            .select('id, name, price, is_active')
-            .in('id', productIds)
-            .eq('is_active', true);
-
-        if (fetchError || !products) {
+        let products: any[];
+        try {
+            const result = await query(
+                'SELECT id, name, price, is_active FROM products WHERE id = ANY($1) AND is_active = true',
+                [productIds]
+            );
+            products = result.rows;
+        } catch (fetchError) {
             console.error('Error fetching products:', fetchError);
             return NextResponse.json(
                 { error: 'Lỗi khi kiểm tra sản phẩm' },
@@ -87,7 +88,8 @@ export async function POST(request: NextRequest) {
 
         for (const cartItem of items) {
             const itemId = cartItem.product_id || cartItem.id;
-            const realProduct = products.find((p: any) => p.id === itemId);
+            // pg trả cột bigint dạng string (tránh mất precision) — so sánh phải ép cùng kiểu string
+            const realProduct = products.find((p: any) => String(p.id) === String(itemId));
 
             if (!realProduct) {
                 return NextResponse.json(
@@ -169,30 +171,37 @@ export async function POST(request: NextRequest) {
         }
 
         // Step 1: Create order in database with customer info
-        const { data: order, error: orderError } = await supabaseServer
-            .from('orders')
-            .insert({
-                order_id: orderId,
-                user_id: null, // Guest checkout - no user_id required
-                customer_email: validation.sanitized.email,
-                customer_name: validation.sanitized.name,
-                customer_phone: validation.sanitized.phone,
-                total_amount: totalAmount,
-                status: 'pending',
-                payment_qr_code: qrCode,
-                payment_method: paymentLinkData ? 'payos' : 'bank_transfer',
-                payment_link_id: paymentLinkData?.paymentLinkId || null,
-                payment_url: paymentLinkData?.checkoutUrl || null,
-                payment_expires_at: paymentLinkData ? new Date(Date.now() + 15 * 60 * 1000).toISOString() : null,
-                payos_order_code: payosOrderCode, // ✅ NEW: Save PayOS orderCode
-            })
-            .select()
-            .single();
-
-        if (orderError) {
+        let order: any;
+        try {
+            const orderResult = await query(
+                `INSERT INTO orders (
+                    id, order_id, user_id, customer_email, customer_name, customer_phone,
+                    total_amount, status, payment_qr_code, payment_method, payment_link_id,
+                    payment_url, payment_expires_at, payos_order_code, created_at
+                ) VALUES (
+                    gen_random_uuid(), $1, NULL, $2, $3, $4,
+                    $5, 'pending', $6, $7, $8,
+                    $9, $10, $11, NOW()
+                ) RETURNING *`,
+                [
+                    orderId,
+                    validation.sanitized.email,
+                    validation.sanitized.name,
+                    validation.sanitized.phone,
+                    totalAmount,
+                    qrCode,
+                    paymentLinkData ? 'payos' : 'bank_transfer',
+                    paymentLinkData?.paymentLinkId || null,
+                    paymentLinkData?.checkoutUrl || null,
+                    paymentLinkData ? new Date(Date.now() + 15 * 60 * 1000).toISOString() : null,
+                    payosOrderCode,
+                ]
+            );
+            order = orderResult.rows[0];
+        } catch (orderError) {
             console.error('Error creating order:', orderError);
             return NextResponse.json(
-                { error: 'Lỗi tạo đơn hàng: ' + orderError.message },
+                { error: 'Lỗi tạo đơn hàng: ' + (orderError instanceof Error ? orderError.message : String(orderError)) },
                 { status: 500 }
             );
         }
@@ -200,28 +209,22 @@ export async function POST(request: NextRequest) {
         console.log('✅ Order created successfully:', order.order_id);
 
         // Step 2: Insert order items into order_items table
-        const orderItems = validatedItems.map(item => ({
-            order_id: order.id, // UUID from orders table
-            product_id: item.product_id,
-            quantity: item.quantity,
-            price_at_purchase: item.price,
-        }));
-
-        const { error: itemsError } = await supabaseServer
-            .from('order_items')
-            .insert(orderItems);
-
-        if (itemsError) {
+        try {
+            for (const item of validatedItems) {
+                await query(
+                    `INSERT INTO order_items (order_id, product_id, quantity, price_at_purchase, created_at)
+                     VALUES ($1, $2, $3, $4, NOW())`,
+                    [order.id, item.product_id, item.quantity, item.price]
+                );
+            }
+        } catch (itemsError) {
             console.error('Error creating order items:', itemsError);
 
             // Rollback: Delete the order if items insertion fails
-            await supabaseServer
-                .from('orders')
-                .delete()
-                .eq('id', order.id);
+            await query('DELETE FROM orders WHERE id = $1', [order.id]);
 
             return NextResponse.json(
-                { error: 'Lỗi tạo chi tiết đơn hàng: ' + itemsError.message },
+                { error: 'Lỗi tạo chi tiết đơn hàng: ' + (itemsError instanceof Error ? itemsError.message : String(itemsError)) },
                 { status: 500 }
             );
         }

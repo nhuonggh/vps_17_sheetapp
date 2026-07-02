@@ -3,7 +3,6 @@
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
 import { Search, BookOpen, MonitorPlay, Users, LayoutGrid, ListFilter, ArrowUpDown } from 'lucide-react';
 
 interface Product {
@@ -51,12 +50,18 @@ function CategoriesContent() {
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
-            const coursesQuery = supabase.from('products').select('*, categories(name, slug)').eq('type', 'course').order('created_at', { ascending: false });
-            const servicesQuery = supabase.from('products').select('*, categories(name, slug)').eq('type', 'service').limit(5);
-
-            const [coursesRes, servicesRes] = await Promise.all([coursesQuery, servicesQuery]);
-            if (coursesRes.data) setProducts(coursesRes.data as unknown as Product[]);
-            if (servicesRes.data) setServices(servicesRes.data as unknown as Product[]);
+            try {
+                const [coursesRes, servicesRes] = await Promise.all([
+                    fetch('/api/products?type=course&limit=100'),
+                    fetch('/api/products?type=service&limit=5'),
+                ]);
+                const coursesJson = await coursesRes.json();
+                const servicesJson = await servicesRes.json();
+                if (coursesJson.data) setProducts(coursesJson.data as unknown as Product[]);
+                if (servicesJson.data) setServices(servicesJson.data as unknown as Product[]);
+            } catch (error) {
+                console.error('Error loading products:', error);
+            }
             setLoading(false);
         };
         fetchData();

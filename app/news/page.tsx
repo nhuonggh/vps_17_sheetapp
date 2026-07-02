@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { Calendar, Eye, ArrowRight } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
@@ -26,19 +25,21 @@ function NewsList() {
 
   useEffect(() => {
     const fetchPosts = async () => {
-      const request = supabase.from('posts').select('*').order('created_at', { ascending: false });
-      
-      const { data } = await request;
-      
-      if (data) {
-        // Ép kiểu dữ liệu trả về từ Supabase thành Post[]
-        let filteredData = data as Post[];
-        
-        if (query) {
-            const lowerQ = query.toLowerCase();
-            filteredData = filteredData.filter(p => p.title.toLowerCase().includes(lowerQ));
+      try {
+        const res = await fetch('/api/posts?limit=100');
+        const json = await res.json();
+
+        if (json.data) {
+          let filteredData = json.data as Post[];
+
+          if (query) {
+              const lowerQ = query.toLowerCase();
+              filteredData = filteredData.filter(p => p.title.toLowerCase().includes(lowerQ));
+          }
+          setPosts(filteredData);
         }
-        setPosts(filteredData);
+      } catch (error) {
+        console.error('Error loading posts:', error);
       }
       setLoading(false);
     };

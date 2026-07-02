@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { query } from '@/lib/db';
 import { notFound } from 'next/navigation';
 import { Calendar, Eye, Facebook, Link as LinkIcon, MessageCircle, ArrowLeft, ArrowRight, Share2, List, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
@@ -12,29 +12,34 @@ interface Category { id: number; name: string; slug: string; }
 
 // --- SERVER FUNCTIONS ---
 async function getPost(slug: string) {
-  const { data: post } = await supabase.from('posts').select('*').eq('slug', slug).single();
-  return post as Post;
+  const result = await query<Post>('SELECT * FROM posts WHERE slug = $1 LIMIT 1', [slug]);
+  return result.rows[0];
 }
 
 async function getRelatedPosts(categoryId: number, currentPostId: number) {
-  const { data } = await supabase.from('posts')
-    .select('id, title, slug, thumbnail_url, created_at')
-    .eq('category_id', categoryId)
-    .neq('id', currentPostId)
-    .limit(4);
-  return data as Partial<Post>[] || [];
+  const result = await query<Partial<Post>>(
+    'SELECT id, title, slug, thumbnail_url, created_at FROM posts WHERE category_id = $1 AND id != $2 LIMIT 4',
+    [categoryId, currentPostId]
+  );
+  return result.rows;
 }
 
 async function getCategory(id: number) {
     if (!id) return null;
-    const { data } = await supabase.from('post_categories').select('*').eq('id', id).single();
-    return data as Category;
+    const result = await query<Category>('SELECT * FROM post_categories WHERE id = $1 LIMIT 1', [id]);
+    return result.rows[0] || null;
 }
 
 async function getAdjacentPosts(createdAt: string) {
-    const { data: prev } = await supabase.from('posts').select('title, slug').lt('created_at', createdAt).order('created_at', { ascending: false }).limit(1).single();
-    const { data: next } = await supabase.from('posts').select('title, slug').gt('created_at', createdAt).order('created_at', { ascending: true }).limit(1).single();
-    return { prev, next };
+    const prevResult = await query<{ title: string; slug: string }>(
+        'SELECT title, slug FROM posts WHERE created_at < $1 ORDER BY created_at DESC LIMIT 1',
+        [createdAt]
+    );
+    const nextResult = await query<{ title: string; slug: string }>(
+        'SELECT title, slug FROM posts WHERE created_at > $1 ORDER BY created_at ASC LIMIT 1',
+        [createdAt]
+    );
+    return { prev: prevResult.rows[0] || null, next: nextResult.rows[0] || null };
 }
 
 // --- MAIN PAGE COMPONENT ---

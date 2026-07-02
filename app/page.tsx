@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
-import HeroSlider from '@/components/HeroSlider'; 
+import HeroSlider from '@/components/HeroSlider';
 import { ChevronRight, Star, Quote } from 'lucide-react';
 
 // --- INTERFACE & MOCK DATA ---
@@ -42,27 +41,21 @@ export default function HomePage() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      
-      // Lấy Khóa học
-      const { data: coursesData } = await supabase
-        .from('products')
-        .select('id, name, slug, price, thumbnail_url, type')
-        .eq('type', 'course')
-        .eq('is_active', true)
-        .limit(4)
-        .order('created_at', { ascending: false });
 
-      // Lấy Dịch vụ
-      const { data: servicesData } = await supabase
-        .from('products')
-        .select('id, name, slug, price, thumbnail_url, type')
-        .eq('type', 'service')
-        .eq('is_active', true)
-        .limit(4)
-        .order('created_at', { ascending: false });
+      try {
+        const [coursesRes, servicesRes] = await Promise.all([
+          fetch('/api/products?type=course&limit=4'),
+          fetch('/api/products?type=service&limit=4'),
+        ]);
+        const coursesJson = await coursesRes.json();
+        const servicesJson = await servicesRes.json();
 
-      if (coursesData) setCourses(coursesData);
-      if (servicesData) setServices(servicesData);
+        if (coursesJson.data) setCourses(coursesJson.data);
+        if (servicesJson.data) setServices(servicesJson.data);
+      } catch (error) {
+        console.error('Error loading homepage products:', error);
+      }
+
       setLoading(false);
     };
     fetchData();

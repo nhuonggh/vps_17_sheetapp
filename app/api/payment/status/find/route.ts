@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseServer as supabase } from '@/lib/supabase-server';
+import { query } from '@/lib/db';
 
 /**
  * Find order by orderCode prefix
@@ -26,16 +26,14 @@ export async function POST(request: NextRequest) {
         // Find order using LIKE pattern
         // Example: orderCodePrefix = "DH1768655550"
         //          matches order_id = "DH1768655550621557OQONTU22G"
-        const { data: orders, error } = await supabase
-            .from('orders')
-            .select('*')
-            .like('order_id', `${orderCodePrefix}%`)
-            .limit(1);
-
-        if (error) {
+        let orders;
+        try {
+            const result = await query('SELECT * FROM orders WHERE order_id LIKE $1 LIMIT 1', [`${orderCodePrefix}%`]);
+            orders = result.rows;
+        } catch (error) {
             console.error('❌ Database error:', error);
             return NextResponse.json(
-                { success: false, error: error.message },
+                { success: false, error: error instanceof Error ? error.message : String(error) },
                 { status: 500 }
             );
         }

@@ -3,10 +3,11 @@
  * Handles automatic user enrollment after successful payment
  */
 
-import { supabaseServer } from '@/lib/supabase-server';
+import { query } from '@/lib/db';
 import { Resend } from 'resend';
 
 interface Order {
+    id: string;
     order_id: string;
     customer_name: string;
     customer_email: string;
@@ -30,7 +31,10 @@ export async function enrollUserInProducts(order: Order): Promise<void> {
         console.log(`🎓 Starting auto-enrollment for order: ${order.order_id}`);
 
         // 1. Get products from order
-        const products = await getProductsFromOrder(order.order_id);
+        // BUG THẬT phát hiện lúc migrate: order_items.order_id là UUID (tham chiếu orders.id),
+        // code gốc truyền order.order_id (mã text "DH...") vào đây — sai kiểu, enrollment luôn
+        // trả về rỗng. Khớp bằng chứng: bảng enrollments có 0 dòng dù products có 25 dòng.
+        const products = await getProductsFromOrder(order.id);
 
         if (!products || products.length === 0) {
             console.warn('No products found for order:', order.order_id);
@@ -60,31 +64,27 @@ export async function enrollUserInProducts(order: Order): Promise<void> {
  * Get products from order_items table with product details including type
  */
 async function getProductsFromOrder(orderId: string): Promise<OrderItem[]> {
-    const { data, error } = await supabaseServer
-        .from('order_items')
-        .select(`
-            *,
-            products:product_id (
-                id,
-                name,
-                type
-            )
-        `)
-        .eq('order_id', orderId);
+    try {
+        const result = await query(
+            `SELECT oi.*, p.name AS product_name, p.type AS product_type
+             FROM order_items oi
+             LEFT JOIN products p ON p.id = oi.product_id
+             WHERE oi.order_id = $1`,
+            [orderId]
+        );
 
-    if (error) {
+        // Transform data to include product details
+        return result.rows.map((item: any) => ({
+            product_id: item.product_id,
+            product_name: item.product_name || 'Unknown Product',
+            product_type: item.product_type || 'course', // Default to course if missing
+            quantity: item.quantity,
+            price: item.price_at_purchase
+        }));
+    } catch (error) {
         console.error('Error fetching order items:', error);
         return [];
     }
-
-    // Transform data to include product details
-    return (data || []).map((item: any) => ({
-        product_id: item.product_id,
-        product_name: item.products?.name || 'Unknown Product',
-        product_type: item.products?.type || 'course', // Default to course if missing
-        quantity: item.quantity,
-        price: item.price_at_purchase
-    }));
 }
 
 /**
@@ -129,20 +129,13 @@ async function activateCourse(
     product: any,
     orderId: string
 ): Promise<void> {
-    const { error } = await supabaseServer
-        .from('enrollments')
-        .insert({
-            user_id: userId,
-            product_id: product.product_id,
-            order_id: orderId,
-            enrolled_at: new Date().toISOString(),
-            progress: 0,
-            completed_at: null
-        })
-        .select()
-        .single();
-
-    if (error) {
+    try {
+        await query(
+            `INSERT INTO enrollments (user_id, product_id, order_id, enrolled_at, progress, completed_at)
+             VALUES ($1, $2, $3, NOW(), 0, NULL)`,
+            [userId, product.product_id, orderId]
+        );
+    } catch (error: any) {
         // Handle duplicate enrollment gracefully
         if (error.code === '23505') { // Unique constraint violation
             console.log(`ℹ️ User already enrolled in course: ${product.product_name}`);
@@ -164,20 +157,13 @@ async function activateService(
     product: any,
     order: Order
 ): Promise<void> {
-    const { error } = await supabaseServer
-        .from('service_activations')
-        .insert({
-            user_id: userId,
-            product_id: product.product_id,
-            order_id: order.order_id,
-            status: 'pending',
-            customer_notes: null,
-            created_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-
-    if (error) {
+    try {
+        await query(
+            `INSERT INTO service_activations (user_id, product_id, order_id, status, customer_notes, created_at)
+             VALUES ($1, $2, $3, 'pending', NULL, NOW())`,
+            [userId, product.product_id, order.order_id]
+        );
+    } catch (error: any) {
         // Handle duplicate activation gracefully
         if (error.code === '23505') { // Unique constraint violation
             console.log(`ℹ️ Service already activated: ${product.product_name}`);
@@ -210,11 +196,8 @@ async function findOrCreateUserProfile(
 ): Promise<string | null> {
     try {
         // 1. Check if profile exists
-        const { data: profile } = await supabaseServer
-            .from('profiles')
-            .select('id')
-            .eq('email', email)
-            .maybeSingle();
+        const existing = await query<{ id: string }>('SELECT id FROM profiles WHERE email = $1 LIMIT 1', [email]);
+        const profile = existing.rows[0];
 
         if (profile) {
             console.log(`✅ Found existing profile for ${email}`);
@@ -224,24 +207,20 @@ async function findOrCreateUserProfile(
         // 2. Profile doesn't exist - create it for guest purchase
         console.log(`📝 Creating new profile for guest user: ${email}`);
 
-        const { data: newProfile, error } = await supabaseServer
-            .from('profiles')
-            .insert({
-                email,
-                name,
-                phone,
-                created_via: 'purchase'
-            })
-            .select('id')
-            .single();
-
-        if (error) {
+        try {
+            const inserted = await query<{ id: string }>(
+                `INSERT INTO profiles (id, email, name, phone, created_via, role, created_at)
+                 VALUES (gen_random_uuid(), $1, $2, $3, 'purchase', 'customer', NOW())
+                 RETURNING id`,
+                [email, name, phone]
+            );
+            const newProfile = inserted.rows[0];
+            console.log(`✅ Created new profile: ${newProfile?.id}`);
+            return newProfile?.id || null;
+        } catch (error) {
             console.error('Error creating profile:', error);
             return null;
         }
-
-        console.log(`✅ Created new profile: ${newProfile?.id}`);
-        return newProfile?.id || null;
 
     } catch (error) {
         console.error('Exception in findOrCreateUserProfile:', error);
@@ -275,11 +254,11 @@ async function notifyAdminAboutNewService(
         }
 
         // Get user profile details
-        const { data: profile } = await supabaseServer
-            .from('profiles')
-            .select('name, email, phone')
-            .eq('id', userId)
-            .single();
+        const profileResult = await query<{ name: string; email: string; phone: string }>(
+            'SELECT name, email, phone FROM profiles WHERE id = $1 LIMIT 1',
+            [userId]
+        );
+        const profile = profileResult.rows[0];
 
         const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -443,43 +422,29 @@ export async function hasProductAccess(
     productId: string
 ): Promise<boolean> {
     // Check if user has any paid order containing this product
-    const { data: orders } = await supabaseServer
-        .from('orders')
-        .select(`
-            order_id,
-            status,
-            order_items!inner(product_id)
-        `)
-        .eq('customer_email', email)
-        .eq('status', 'paid')
-        .eq('order_items.product_id', productId);
+    const result = await query(
+        `SELECT o.order_id
+         FROM orders o
+         INNER JOIN order_items oi ON oi.order_id = o.id
+         WHERE o.customer_email = $1 AND o.status = 'paid' AND oi.product_id = $2
+         LIMIT 1`,
+        [email, productId]
+    );
 
-    return !!(orders && orders.length > 0);
+    return result.rows.length > 0;
 }
 
 /**
  * Get all products user has access to
  */
 export async function getUserProducts(email: string): Promise<string[]> {
-    const { data: orders } = await supabaseServer
-        .from('orders')
-        .select(`
-            order_items(product_id)
-        `)
-        .eq('customer_email', email)
-        .eq('status', 'paid');
+    const result = await query<{ product_id: string }>(
+        `SELECT DISTINCT oi.product_id
+         FROM orders o
+         INNER JOIN order_items oi ON oi.order_id = o.id
+         WHERE o.customer_email = $1 AND o.status = 'paid'`,
+        [email]
+    );
 
-    if (!orders) return [];
-
-    // Extract unique product IDs
-    const productIds = new Set<string>();
-    orders.forEach((order: any) => {
-        order.order_items?.forEach((item: any) => {
-            if (item.product_id) {
-                productIds.add(item.product_id);
-            }
-        });
-    });
-
-    return Array.from(productIds);
+    return result.rows.map((row) => row.product_id).filter(Boolean);
 }

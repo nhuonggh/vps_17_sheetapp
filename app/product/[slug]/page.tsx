@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
-import { 
+import { query } from '@/lib/db';
+import {
   CheckCircle2, Laptop, Wifi, UserCheck, Calendar, Clock, FileText, MonitorPlay, Users, Share2, Copy, Mail, Send, Smartphone, ShieldCheck, Rocket, Tag, Monitor
 } from 'lucide-react';
 import ProductActions from '@/components/ProductActions'; 
@@ -33,16 +33,58 @@ interface RelatedProduct { id: number; name: string; slug: string; price: number
 
 // Các hàm fetch
 async function getProduct(slug: string): Promise<Product | null> {
-  const { data, error } = await supabase.from('products').select(`*, categories (name, slug), instructor:instructors(*), chapters:chapters(*, lessons(*))`).eq('slug', slug).single();
-  if (error || !data) return null;
-  if (data.chapters) {
-    data.chapters.sort((a: Chapter, b: Chapter) => (a.sort_order || 0) - (b.sort_order || 0));
-    data.chapters.forEach((ch: Chapter) => { if (ch.lessons) ch.lessons.sort((a: Lesson, b: Lesson) => (a.sort_order || 0) - (b.sort_order || 0)); });
+  const productResult = await query(
+    `SELECT p.*,
+            CASE WHEN c.id IS NOT NULL THEN json_build_object('name', c.name, 'slug', c.slug) END AS categories,
+            CASE WHEN i.id IS NOT NULL THEN row_to_json(i.*) END AS instructor
+     FROM products p
+     LEFT JOIN categories c ON c.id = p.category_id
+     LEFT JOIN instructors i ON i.id = p.instructor_id
+     WHERE p.slug = $1
+     LIMIT 1`,
+    [slug]
+  );
+  const product: any = productResult.rows[0];
+  if (!product) return null;
+
+  const chaptersResult = await query<Chapter>(
+    'SELECT * FROM chapters WHERE product_id = $1 ORDER BY sort_order',
+    [product.id]
+  );
+  const chapters = chaptersResult.rows;
+
+  if (chapters.length > 0) {
+    const chapterIds = chapters.map((ch) => ch.id);
+    const lessonsResult = await query<Lesson & { chapter_id: number }>(
+      'SELECT * FROM lessons WHERE chapter_id = ANY($1) ORDER BY sort_order',
+      [chapterIds]
+    );
+    const lessonsByChapter = new Map<number, Lesson[]>();
+    for (const lesson of lessonsResult.rows) {
+      const list = lessonsByChapter.get(lesson.chapter_id) || [];
+      list.push(lesson);
+      lessonsByChapter.set(lesson.chapter_id, list);
+    }
+    for (const chapter of chapters) {
+      (chapter as any).lessons = lessonsByChapter.get(chapter.id) || [];
+    }
   }
-  return data as unknown as Product;
+
+  product.chapters = chapters;
+  return product as unknown as Product;
 }
-async function getRelatedPosts(): Promise<RelatedPost[]> { const { data } = await supabase.from('posts').select('*').limit(3).order('created_at', { ascending: false }); return (data as RelatedPost[]) || []; }
-async function getRelatedProducts(currentId: number, currentType: string): Promise<RelatedProduct[]> { const targetType = currentType === 'course' ? 'service' : 'course'; const { data } = await supabase.from('products').select('*').eq('type', targetType).limit(5); return (data as RelatedProduct[]) || []; }
+async function getRelatedPosts(): Promise<RelatedPost[]> {
+  const result = await query<RelatedPost>('SELECT * FROM posts ORDER BY created_at DESC LIMIT 3');
+  return result.rows;
+}
+async function getRelatedProducts(currentId: number, currentType: string): Promise<RelatedProduct[]> {
+  const targetType = currentType === 'course' ? 'service' : 'course';
+  const result = await query<RelatedProduct>(
+    'SELECT * FROM products WHERE type = $1 LIMIT 5',
+    [targetType]
+  );
+  return result.rows;
+}
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

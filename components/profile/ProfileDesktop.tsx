@@ -1,9 +1,7 @@
 'use client';
 
-import { User } from '@supabase/supabase-js';
 import { useState, useEffect } from 'react';
 import { User as UserIcon, Package, CalendarCheck, Bell, LogOut, CreditCard, ChevronRight, LucideIcon, Loader2, Save } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
 import { signOut } from '@/lib/auth/client-signout';
 import { useCart } from '@/context/CartContext';
 
@@ -54,7 +52,13 @@ const SidebarItem = ({ id, icon: Icon, label, isActive, onClick }: SidebarItemPr
     </button>
 );
 
-export default function ProfileDesktop({ user }: { user: User | null }) {
+interface ProfileUser {
+    id: string;
+    email?: string;
+    user_metadata: { avatar_url?: string; full_name?: string };
+}
+
+export default function ProfileDesktop({ user }: { user: ProfileUser | null }) {
     const { clearCart } = useCart();
     const [activeTab, setActiveTab] = useState('info');
     const [profile, setProfile] = useState<Profile | null>(null);
@@ -79,15 +83,10 @@ export default function ProfileDesktop({ user }: { user: User | null }) {
             }
 
             try {
-                const { data, error } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', user.id)
-                    .single();
+                const res = await fetch('/api/profile');
+                const { profile: data } = await res.json();
 
-                if (error) {
-                    console.error('Error loading profile:', error);
-                } else if (data) {
+                if (data) {
                     setProfile(data);
                     setFormData({
                         fullName: data.full_name || data.name || '',
@@ -120,40 +119,24 @@ export default function ProfileDesktop({ user }: { user: User | null }) {
 
         try {
             // Update profiles table
-            const { error: profileError } = await supabase
-                .from('profiles')
-                .update({
-                    full_name: formData.fullName,
-                    name: formData.fullName, // Sync both columns
+            const res = await fetch('/api/profile', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fullName: formData.fullName,
                     phone: formData.phone,
                     job: formData.job,
                     gender: formData.gender,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', user.id);
-
-            if (profileError) {
-                console.error('Profile update error:', profileError);
-                throw new Error(`Không thể cập nhật profile: ${profileError.message}`);
-            }
-
-            // Also update auth.users metadata for consistency
-            await supabase.auth.updateUser({
-                data: {
-                    full_name: formData.fullName,
-                    phone: formData.phone,
-                    job: formData.job
-                }
+                }),
             });
 
-            setMessage({ type: 'success', text: 'Cập nhật thông tin thành công!' });
+            if (!res.ok) {
+                throw new Error('Không thể cập nhật profile');
+            }
 
-            // Reload profile
-            const { data: updatedProfile } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', user.id)
-                .single();
+            const { profile: updatedProfile } = await res.json();
+
+            setMessage({ type: 'success', text: 'Cập nhật thông tin thành công!' });
 
             if (updatedProfile) {
                 setProfile(updatedProfile);

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseServer as supabase } from '@/lib/supabase-server';
+import { query } from '@/lib/db';
 import { getPaymentInfo } from '@/lib/payos';
 
 export async function POST(request: NextRequest) {
@@ -14,13 +14,10 @@ export async function POST(request: NextRequest) {
         }
 
         // 1. Get order from database
-        const { data: order, error: orderError } = await supabase
-            .from('orders')
-            .select('*')
-            .eq('order_id', orderId)
-            .single();
+        const orderResult = await query('SELECT * FROM orders WHERE order_id = $1 LIMIT 1', [orderId]);
+        const order = orderResult.rows[0];
 
-        if (orderError || !order) {
+        if (!order) {
             return NextResponse.json(
                 { success: false, error: 'Order not found' },
                 { status: 404 }
@@ -61,29 +58,29 @@ export async function POST(request: NextRequest) {
             // 6. Check if payment is completed
             if (paymentInfo.data.status === 'PAID') {
                 // Update order to paid
-                const { error: updateError } = await supabase
-                    .from('orders')
-                    .update({
-                        status: 'paid',
-                        paid_at: new Date().toISOString(),
-                        transaction_id: paymentInfo.data.id || paymentInfo.data.transactionId,
-                    })
-                    .eq('order_id', orderId);
-
-                if (updateError) {
+                try {
+                    await query(
+                        `UPDATE orders SET status = 'paid', paid_at = $1, transaction_id = $2 WHERE order_id = $3`,
+                        [new Date().toISOString(), paymentInfo.data.id || paymentInfo.data.transactionId, orderId]
+                    );
+                } catch (updateError) {
                     console.error('Error updating order:', updateError);
                 }
 
                 // Create transaction record
-                await supabase.from('transactions').insert({
-                    order_id: orderId,
-                    transaction_id: paymentInfo.data.id || paymentInfo.data.transactionId || `TXN-${Date.now()}`,
-                    payment_link_id: order.payment_link_id,
-                    amount: order.total_amount,
-                    status: 'success',
-                    paid_at: new Date().toISOString(),
-                    webhook_data: paymentInfo.data,
-                });
+                await query(
+                    `INSERT INTO transactions (
+                        id, order_id, transaction_id, payment_link_id, amount, status, paid_at, webhook_data, created_at
+                    ) VALUES (gen_random_uuid(), $1, $2, $3, $4, 'success', $5, $6, NOW())`,
+                    [
+                        orderId,
+                        paymentInfo.data.id || paymentInfo.data.transactionId || `TXN-${Date.now()}`,
+                        order.payment_link_id,
+                        order.total_amount,
+                        new Date().toISOString(),
+                        JSON.stringify(paymentInfo.data),
+                    ]
+                );
 
                 return NextResponse.json({
                     success: true,

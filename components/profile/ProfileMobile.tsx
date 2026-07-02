@@ -1,13 +1,11 @@
 'use client';
 
-import { User } from '@supabase/supabase-js';
 import { useState, useEffect } from 'react';
 import {
     User as UserIcon, Phone, Briefcase, Package, Clock,
     CalendarCheck, Bell, LogOut, Edit, X, Loader2, Save,
     Ticket, UserPlus, MessageSquarePlus, Copy, Check, ShieldCheck, FileText, Target
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
 import { signOut } from '@/lib/auth/client-signout';
 import { useCart } from '@/context/CartContext';
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
@@ -26,7 +24,13 @@ interface AffiliateRequest {
     id: number; created_at: string; status: string; full_name: string; phone: string; scope?: string;
 }
 
-export default function ProfileMobile({ user }: { user: User | null }) {
+interface ProfileUser {
+    id: string;
+    email?: string;
+    user_metadata: { avatar_url?: string; full_name?: string };
+}
+
+export default function ProfileMobile({ user }: { user: ProfileUser | null }) {
     const { clearCart } = useCart();
     const { executeRecaptcha } = useGoogleReCaptcha();
     const [activeTab, setActiveTab] = useState('info');
@@ -67,11 +71,8 @@ export default function ProfileMobile({ user }: { user: User | null }) {
             if (!user) return;
 
             // Load profile from profiles table
-            const { data: profileData } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', user.id)
-                .single();
+            const profileRes = await fetch('/api/profile');
+            const { profile: profileData } = await profileRes.json();
 
             if (profileData) {
                 setFormData({
@@ -84,39 +85,29 @@ export default function ProfileMobile({ user }: { user: User | null }) {
 
             // Load Bookings
             const fetchBookings = async () => {
-                const { data } = await supabase.from('bookings')
-                    .select('*')
-                    .or(`user_id.eq.${user.id},phone.eq.${profileData?.phone}`)
-                    .order('created_at', { ascending: false });
+                const res = await fetch('/api/profile/bookings');
+                const { bookings: data } = await res.json();
                 if (data) setBookings(data);
             };
 
             // Load Notifications
             const fetchNotifications = async () => {
-                const { data } = await supabase.from('notifications')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .order('created_at', { ascending: false });
+                const res = await fetch('/api/profile/notifications');
+                const { notifications: data } = await res.json();
                 if (data) setNotifications(data as Notification[]);
             };
 
             // Load Coupons
             const fetchCoupons = async () => {
-                const today = new Date().toISOString().split('T')[0];
-                const { data } = await supabase.from('coupons')
-                    .select('*')
-                    .eq('is_active', true)
-                    .gte('expiration_date', today)
-                    .order('id', { ascending: true });
+                const res = await fetch('/api/coupons');
+                const { coupons: data } = await res.json();
                 if (data) setCoupons(data);
             };
 
             // Check Affiliate Status
             const checkAffiliate = async () => {
-                const { data } = await supabase.from('affiliate_requests')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .maybeSingle();
+                const res = await fetch('/api/profile/affiliate-request');
+                const { affiliateRequest: data } = await res.json();
                 if (data) setAffiliateRequest(data);
             };
 
@@ -143,34 +134,20 @@ export default function ProfileMobile({ user }: { user: User | null }) {
             if (!user) throw new Error('User not logged in');
 
             // Update profiles table
-            const { error: profileError } = await supabase
-                .from('profiles')
-                .update({
-                    full_name: formData.fullName,
-                    name: formData.fullName,
+            const res = await fetch('/api/profile', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fullName: formData.fullName,
                     phone: formData.phone,
                     job: formData.job,
                     gender: formData.gender,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', user.id);
-
-            if (profileError) {
-                console.error('Profile update error:', profileError);
-                throw profileError;
-            }
-
-            // Also update auth.users metadata
-            const { error: authError } = await supabase.auth.updateUser({
-                data: {
-                    full_name: formData.fullName,
-                    phone: formData.phone,
-                    job: formData.job,
-                    gender: formData.gender
-                }
+                }),
             });
 
-            if (authError) throw authError;
+            if (!res.ok) {
+                throw new Error('Profile update failed');
+            }
 
             alert("Cập nhật thông tin thành công!");
             setShowEditModal(false);
@@ -209,13 +186,13 @@ export default function ProfileMobile({ user }: { user: User | null }) {
             }
 
             // CAPTCHA passed - Submit feedback
-            const { error } = await supabase.from('feedbacks').insert([{
-                user_id: user?.id,
-                content: feedbackContent,
-                type: 'general'
-            }]);
+            const feedbackRes = await fetch('/api/feedback', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: feedbackContent, type: 'general' }),
+            });
 
-            if (error) throw error;
+            if (!feedbackRes.ok) throw new Error('Failed to submit feedback');
             alert("Cảm ơn bạn đã gửi góp ý!");
             setFeedbackContent('');
         } catch (error) {
@@ -267,15 +244,18 @@ export default function ProfileMobile({ user }: { user: User | null }) {
             }
 
             // CAPTCHA passed - Submit affiliate request
-            const { data, error } = await supabase.from('affiliate_requests').insert([{
-                user_id: user?.id,
-                full_name: affiliateForm.fullName,
-                phone: affiliateForm.phone,
-                scope: affiliateForm.scope,
-                status: 'pending'
-            }]).select().single();
+            const affiliateRes = await fetch('/api/profile/affiliate-request', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fullName: affiliateForm.fullName,
+                    phone: affiliateForm.phone,
+                    scope: affiliateForm.scope,
+                }),
+            });
 
-            if (error) throw error;
+            if (!affiliateRes.ok) throw new Error('Failed to submit affiliate request');
+            const { affiliateRequest: data } = await affiliateRes.json();
 
             alert("Gửi hồ sơ đăng ký thành công!");
             setAffiliateRequest(data);

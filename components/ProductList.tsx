@@ -1,24 +1,22 @@
-import { supabase } from '@/lib/supabase';
+import { query } from '@/lib/db';
 import ProductCard from './ProductCard';
 
 // Hàm lấy dữ liệu (Chạy trên Server - cực nhanh và bảo mật)
 async function getProducts() {
-  const { data: products, error } = await supabase
-    .from('products')
-    .select(`
-      *,
-      categories (name)
-    `)
-    .eq('is_active', true)
-    .order('created_at', { ascending: false });
-
-  if (error) {
+  try {
+    const result = await query(
+      `SELECT p.*,
+              CASE WHEN c.id IS NOT NULL THEN json_build_object('name', c.name) END AS categories
+       FROM products p
+       LEFT JOIN categories c ON c.id = p.category_id
+       WHERE p.is_active = true
+       ORDER BY p.created_at DESC`
+    );
+    return result.rows;
+  } catch (error) {
     console.error('Lỗi lấy sản phẩm:', error);
     return [];
   }
-  
-  // Ép kiểu dữ liệu trả về cho khớp với ProductProps (nếu cần thiết, hoặc để any nếu muốn nhanh nhưng nên rõ ràng)
-   return products || [];
 }
 
 export default async function ProductList() {

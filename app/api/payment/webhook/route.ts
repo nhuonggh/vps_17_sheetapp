@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseServer } from '@/lib/supabase-server';
+import { query } from '@/lib/db';
 import { verifyWebhookSignature } from '@/lib/payos';
 import { enrollUserInProducts, sendEnrollmentEmail } from '@/lib/auto-enrollment';
 
@@ -89,13 +89,12 @@ export async function POST(request: NextRequest) {
         console.log(`🔍 Processing payment for order: ${orderCode}`);
 
         // Find order by orderCode
-        const { data: orders, error: fetchError } = await supabaseServer
-            .from('orders')
-            .select('*')
-            .ilike('order_id', `%${orderCode}%`)
-            .limit(1);
+        const ordersResult = await query(
+            'SELECT * FROM orders WHERE order_id ILIKE $1 LIMIT 1',
+            [`%${orderCode}%`]
+        );
 
-        if (fetchError || !orders || orders.length === 0) {
+        if (ordersResult.rows.length === 0) {
             console.error('Order not found:', orderCode);
             return NextResponse.json(
                 { error: 'Order not found' },
@@ -103,7 +102,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const order = orders[0];
+        const order = ordersResult.rows[0];
 
         // Validate amount matches
         if (order.total_amount !== amount) {
@@ -115,11 +114,11 @@ export async function POST(request: NextRequest) {
         }
 
         // Check if webhook already processed (idempotency)
-        const { data: existingTransaction } = await supabaseServer
-            .from('transactions')
-            .select('id')
-            .eq('transaction_id', reference)
-            .single();
+        const existingTransactionResult = await query(
+            'SELECT id FROM transactions WHERE transaction_id = $1 LIMIT 1',
+            [reference]
+        );
+        const existingTransaction = existingTransactionResult.rows[0];
 
         if (existingTransaction) {
             console.log('Webhook already processed:', reference);
@@ -142,16 +141,12 @@ export async function POST(request: NextRequest) {
         }
 
         // Update order status
-        const { error: updateError } = await supabaseServer
-            .from('orders')
-            .update({
-                status: orderStatus,
-                paid_at: orderStatus === 'paid' ? new Date().toISOString() : null,
-                transaction_id: reference,
-            })
-            .eq('order_id', order.order_id);
-
-        if (updateError) {
+        try {
+            await query(
+                `UPDATE orders SET status = $1, paid_at = $2, transaction_id = $3 WHERE order_id = $4`,
+                [orderStatus, orderStatus === 'paid' ? new Date().toISOString() : null, reference, order.order_id]
+            );
+        } catch (updateError) {
             console.error('Error updating order:', updateError);
             return NextResponse.json(
                 { error: 'Failed to update order' },
@@ -160,22 +155,27 @@ export async function POST(request: NextRequest) {
         }
 
         // Create transaction record
-        const { error: transactionError } = await supabaseServer
-            .from('transactions')
-            .insert({
-                order_id: order.order_id,
-                transaction_id: reference,
-                amount: amount,
-                currency: 'VND',
-                status: transactionStatus,
-                payment_method: 'BANK_TRANSFER',
-                bank_code: accountNumber,
-                account_number: accountNumber,
-                paid_at: orderStatus === 'paid' ? transactionDateTime : null,
-                webhook_data: webhookData,
-            });
-
-        if (transactionError) {
+        try {
+            await query(
+                `INSERT INTO transactions (
+                    id, order_id, transaction_id, amount, currency, status,
+                    payment_method, bank_code, account_number, paid_at, webhook_data, created_at
+                ) VALUES (
+                    gen_random_uuid(), $1, $2, $3, 'VND', $4,
+                    'BANK_TRANSFER', $5, $6, $7, $8, NOW()
+                )`,
+                [
+                    order.order_id,
+                    reference,
+                    amount,
+                    transactionStatus,
+                    accountNumber,
+                    accountNumber,
+                    orderStatus === 'paid' ? transactionDateTime : null,
+                    JSON.stringify(webhookData),
+                ]
+            );
+        } catch (transactionError) {
             console.error('Error creating transaction:', transactionError);
             // Don't return error, order is already updated
         }
@@ -191,18 +191,20 @@ export async function POST(request: NextRequest) {
 
                 // Send email notification with order details
                 try {
-                    const { data: orderItems } = await supabaseServer
-                        .from('order_items')
-                        .select('product_id, quantity, price_at_purchase')
-                        .eq('order_id', order.id);
+                    const orderItemsResult = await query<{ product_id: number; quantity: number; price_at_purchase: number }>(
+                        'SELECT product_id, quantity, price_at_purchase FROM order_items WHERE order_id = $1',
+                        [order.id]
+                    );
+                    const orderItems = orderItemsResult.rows;
 
                     if (orderItems && orderItems.length > 0) {
                         // Get product names
                         const productIds = orderItems.map(item => item.product_id);
-                        const { data: products } = await supabaseServer
-                            .from('products')
-                            .select('id, name')
-                            .in('id', productIds);
+                        const productsResult = await query<{ id: number; name: string }>(
+                            'SELECT id, name FROM products WHERE id = ANY($1)',
+                            [productIds]
+                        );
+                        const products = productsResult.rows;
 
                         // Map product names to order items
                         const enrichedItems = orderItems.map(item => ({
@@ -232,17 +234,17 @@ export async function POST(request: NextRequest) {
 
                 // Log to failed_enrollments table for retry
                 try {
-                    await supabaseServer.from('failed_enrollments').insert({
-                        order_id: order.order_id,
-                        customer_email: order.customer_email,
-                        error_message: enrollError?.message || 'Unknown error',
-                        error_details: {
-                            stack: enrollError?.stack,
-                            code: enrollError?.code
-                        },
-                        retry_count: 0,
-                        created_at: new Date().toISOString()
-                    });
+                    await query(
+                        `INSERT INTO failed_enrollments (
+                            order_id, customer_email, error_message, error_details, retry_count, created_at
+                        ) VALUES ($1, $2, $3, $4, 0, NOW())`,
+                        [
+                            order.order_id,
+                            order.customer_email,
+                            enrollError?.message || 'Unknown error',
+                            JSON.stringify({ stack: enrollError?.stack, code: enrollError?.code }),
+                        ]
+                    );
                     console.log(`📝 Logged to failed_enrollments for manual review`);
                 } catch (logError) {
                     console.error('Failed to log enrollment error:', logError);

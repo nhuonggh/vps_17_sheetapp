@@ -3,7 +3,6 @@
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
 import { Smartphone, Database, Layout, Monitor, FileSpreadsheet, Cpu, LayoutGrid, DollarSign, Briefcase, BookOpen } from 'lucide-react';
 import { FILTER_TREE } from '@/lib/constants';
 
@@ -68,22 +67,19 @@ function ServicesContent() {
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
-            const servicesQuery = supabase
-                .from('products')
-                .select('*, categories(name, slug)')
-                .eq('type', 'service')
-                .order('created_at', { ascending: false });
+            try {
+                const [sRes, cRes] = await Promise.all([
+                    fetch('/api/products?type=service&limit=100'),
+                    fetch('/api/products?type=course&limit=5'),
+                ]);
+                const sJson = await sRes.json();
+                const cJson = await cRes.json();
 
-            const coursesQuery = supabase
-                .from('products')
-                .select('*')
-                .eq('type', 'course')
-                .limit(5);
-
-            const [sRes, cRes] = await Promise.all([servicesQuery, coursesQuery]);
-
-            if (sRes.data) setServices(sRes.data as unknown as Service[]);
-            if (cRes.data) setCourses(cRes.data as unknown as Service[]);
+                if (sJson.data) setServices(sJson.data as unknown as Service[]);
+                if (cJson.data) setCourses(cJson.data as unknown as Service[]);
+            } catch (error) {
+                console.error('Error loading services:', error);
+            }
             setLoading(false);
         };
 

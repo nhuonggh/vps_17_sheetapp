@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { supabase } from '@/lib/supabase';
 // IMPORT PC & MOBILE (Đảm bảo bạn đã tạo file PC ở bước trước)
 import CategoriesViewPC from '@/components/pc/CategoriesView';
 import CategoriesViewMobile from '@/components/mobile/CategoriesView';
@@ -44,14 +43,14 @@ function CategoriesPageContent() {
     const fetchData = async () => {
       setLoading(true);
       // Lấy tất cả Course và Service đang active
-      const { data, error } = await supabase
-        .from('products')
-        .select('*, categories(name, slug)')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
-
-      if (!error && data) {
-        setAllProducts(data as unknown as Product[]);
+      try {
+        const res = await fetch('/api/products?limit=100');
+        const json = await res.json();
+        if (json.data) {
+          setAllProducts(json.data as unknown as Product[]);
+        }
+      } catch (error) {
+        console.error('Error loading categories products:', error);
       }
       setLoading(false);
     };

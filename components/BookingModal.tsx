@@ -1,7 +1,6 @@
 'use client';
 import { useState } from 'react';
 import { X, CalendarCheck, User, Phone, MessageSquare, Loader2 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 
 interface BookingModalProps {
@@ -58,19 +57,18 @@ export default function BookingModal({ isOpen, onClose }: BookingModalProps) {
         return;
       }
 
-      // 3. CAPTCHA passed - Gửi dữ liệu lên Supabase
-      const { error } = await supabase
-        .from('bookings')
-        .insert([
-          {
-            full_name: formData.fullName,
-            phone: formData.phone,
-            content: formData.message,
-            status: 'new'
-          }
-        ]);
+      // 3. CAPTCHA passed - Gửi dữ liệu lên API
+      const bookingRes = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName: formData.fullName,
+          phone: formData.phone,
+          message: formData.message,
+        }),
+      });
 
-      if (error) throw error;
+      if (!bookingRes.ok) throw new Error('Failed to submit booking');
 
       // 4. Thông báo thành công & Đóng modal
       alert("Gửi yêu cầu thành công! Chuyên gia của SheetApp sẽ liên hệ bạn sớm nhất.");
