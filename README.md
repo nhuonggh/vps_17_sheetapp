@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SheetApp
 
-## Getting Started
+Next.js 16 (App Router) + PostgreSQL 15 tự host trên VPS + Google OAuth2/JWT tự code. Không dùng
+Supabase, không deploy Vercel.
 
-First, run the development server:
+## Getting Started (local dev)
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Mở [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Cần file `.env` ở root (không commit, xem `.gitignore`) với các biến:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```env
+NODE_ENV=development
+DATABASE_URL=postgresql://<user>:<password>@localhost:5432/<db>
+JWT_SECRET=<random secret, vd: openssl rand -base64 32>
+GOOGLE_CLIENT_ID=<google oauth client id>
+GOOGLE_CLIENT_SECRET=<google oauth client secret>
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=<same as GOOGLE_CLIENT_ID>
+```
 
-## Learn More
+## Kiến trúc & vận hành
 
-To learn more about Next.js, take a look at the following resources:
+- **Database**: PostgreSQL 15 chạy Docker trên VPS (`postgres_sheetapp`), truy cập qua
+  `DATABASE_URL`, client là `pg` (node-postgres) — xem `lib/db.ts`.
+- **Auth**: Google Identity Services (ID token) → verify bằng `google-auth-library` → tự ký JWT
+  (`JWT_SECRET`) → cookie `session` (httpOnly). Không dùng Supabase Auth. Xem
+  `lib/auth/`, `app/api/auth/`.
+- **Authorization**: kiểm tra quyền ở tầng application (mỗi API route tự gọi `requireAuth()` +
+  lọc theo `user.id` từ session đã verify), thay cho Supabase RLS đã gỡ bỏ.
+- **Reverse proxy**: Caddy trên VPS, 1 site block/domain.
+- **Deploy**: Docker + GitHub Actions — push `main` → build image → push registry riêng → SSH vào
+  VPS pull & restart container. Xem `.github/workflows/deploy.yml`, `Dockerfile`.
+- Chi tiết đầy đủ + audit bảo mật: xem `audit_project/` và `.specify/memory/constitution.md`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Learn More (Next.js)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Learn Next.js](https://nextjs.org/learn)

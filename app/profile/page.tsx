@@ -20,9 +20,8 @@ export default function ProfilePage() {
     return <div className="min-h-screen flex items-center justify-center text-emerald-600 font-bold">Đang tải hồ sơ...</div>;
   }
 
-  // Shim tương thích shape User cũ của Supabase (user_metadata.*) mà
-  // ProfileMobile/ProfileDesktop đang đọc — 2 component đó tự fetch thêm dữ liệu
-  // qua Supabase (thuộc phạm vi spec CRUD kế tiếp), không đổi ở đây.
+  // Shim adapt sang shape user_metadata.* mà ProfileMobile/ProfileDesktop đang đọc —
+  // 2 component đó tự fetch thêm dữ liệu qua GET /api/profile, không đổi ở đây.
   const compatUser = {
     id: user.id,
     email: user.email,

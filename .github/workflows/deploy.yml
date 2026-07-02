@@ -40,7 +40,12 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
+            set -e
             docker login ${{ secrets.REGISTRY_URL }} -u ${{ secrets.REGISTRY_USER }} -p ${{ secrets.REGISTRY_PASS }}
+
+            # Remember the image currently running so we can roll back to it on a failed healthcheck
+            PREV_IMAGE=$(docker inspect --format='{{.Config.Image}}' sheetapp 2>/dev/null || echo "")
+
             docker pull ${{ secrets.REGISTRY_URL }}/sheetapp:latest
             docker stop sheetapp || true
             docker rm sheetapp || true
@@ -51,4 +56,32 @@ jobs:
               -p 3017:3000 \
               --env-file /home/deploy_sheetapp/app/.env \
               ${{ secrets.REGISTRY_URL }}/sheetapp:latest
+
+            echo "Waiting for new container to answer on :3017..."
+            HEALTHY=0
+            for i in $(seq 1 15); do
+              if curl -fsS -o /dev/null http://localhost:3017; then
+                HEALTHY=1
+                break
+              fi
+              sleep 2
+            done
+
+            if [ "$HEALTHY" -ne 1 ]; then
+              echo "New container failed healthcheck — rolling back"
+              docker logs --tail 100 sheetapp || true
+              docker stop sheetapp || true
+              docker rm sheetapp || true
+              if [ -n "$PREV_IMAGE" ]; then
+                docker run -d \
+                  --name sheetapp \
+                  --restart always \
+                  --network pgnet \
+                  -p 3017:3000 \
+                  --env-file /home/deploy_sheetapp/app/.env \
+                  "$PREV_IMAGE"
+              fi
+              exit 1
+            fi
+
             docker image prune -f

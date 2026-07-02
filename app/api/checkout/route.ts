@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, withTransaction } from '@/lib/db';
 import { validateFormInput } from '@/lib/validators';
 import { createPaymentLinkDirect } from '@/lib/payos-direct';
 import { isPayOSConfigured } from '@/lib/payos';
@@ -170,66 +170,58 @@ export async function POST(request: NextRequest) {
             console.log('Using static VietQR code');
         }
 
-        // Step 1: Create order in database with customer info
+        // Step 1+2: create the order and its order_items inside a single DB transaction.
+        // Previously these were two independent query() calls with a manual compensating
+        // DELETE on failure, which didn't clean up order_items already inserted earlier in the
+        // loop when a later item failed — a real transaction makes partial failure impossible.
         let order: any;
         try {
-            const orderResult = await query(
-                `INSERT INTO orders (
-                    id, order_id, user_id, customer_email, customer_name, customer_phone,
-                    total_amount, status, payment_qr_code, payment_method, payment_link_id,
-                    payment_url, payment_expires_at, payos_order_code, created_at
-                ) VALUES (
-                    gen_random_uuid(), $1, NULL, $2, $3, $4,
-                    $5, 'pending', $6, $7, $8,
-                    $9, $10, $11, NOW()
-                ) RETURNING *`,
-                [
-                    orderId,
-                    validation.sanitized.email,
-                    validation.sanitized.name,
-                    validation.sanitized.phone,
-                    totalAmount,
-                    qrCode,
-                    paymentLinkData ? 'payos' : 'bank_transfer',
-                    paymentLinkData?.paymentLinkId || null,
-                    paymentLinkData?.checkoutUrl || null,
-                    paymentLinkData ? new Date(Date.now() + 15 * 60 * 1000).toISOString() : null,
-                    payosOrderCode,
-                ]
-            );
-            order = orderResult.rows[0];
-        } catch (orderError) {
-            console.error('Error creating order:', orderError);
-            return NextResponse.json(
-                { error: 'Lỗi tạo đơn hàng: ' + (orderError instanceof Error ? orderError.message : String(orderError)) },
-                { status: 500 }
-            );
-        }
-
-        console.log('✅ Order created successfully:', order.order_id);
-
-        // Step 2: Insert order items into order_items table
-        try {
-            for (const item of validatedItems) {
-                await query(
-                    `INSERT INTO order_items (order_id, product_id, quantity, price_at_purchase, created_at)
-                     VALUES ($1, $2, $3, $4, NOW())`,
-                    [order.id, item.product_id, item.quantity, item.price]
+            order = await withTransaction(async (client) => {
+                const orderResult = await client.query(
+                    `INSERT INTO orders (
+                        id, order_id, user_id, customer_email, customer_name, customer_phone,
+                        total_amount, status, payment_qr_code, payment_method, payment_link_id,
+                        payment_url, payment_expires_at, payos_order_code, created_at
+                    ) VALUES (
+                        gen_random_uuid(), $1, NULL, $2, $3, $4,
+                        $5, 'pending', $6, $7, $8,
+                        $9, $10, $11, NOW()
+                    ) RETURNING *`,
+                    [
+                        orderId,
+                        validation.sanitized.email,
+                        validation.sanitized.name,
+                        validation.sanitized.phone,
+                        totalAmount,
+                        qrCode,
+                        paymentLinkData ? 'payos' : 'bank_transfer',
+                        paymentLinkData?.paymentLinkId || null,
+                        paymentLinkData?.checkoutUrl || null,
+                        paymentLinkData ? new Date(Date.now() + 15 * 60 * 1000).toISOString() : null,
+                        payosOrderCode,
+                    ]
                 );
-            }
-        } catch (itemsError) {
-            console.error('Error creating order items:', itemsError);
+                const createdOrder = orderResult.rows[0];
 
-            // Rollback: Delete the order if items insertion fails
-            await query('DELETE FROM orders WHERE id = $1', [order.id]);
+                for (const item of validatedItems) {
+                    await client.query(
+                        `INSERT INTO order_items (order_id, product_id, quantity, price_at_purchase, created_at)
+                         VALUES ($1, $2, $3, $4, NOW())`,
+                        [createdOrder.id, item.product_id, item.quantity, item.price]
+                    );
+                }
 
+                return createdOrder;
+            });
+        } catch (error) {
+            console.error('Error creating order/order_items:', error);
             return NextResponse.json(
-                { error: 'Lỗi tạo chi tiết đơn hàng: ' + (itemsError instanceof Error ? itemsError.message : String(itemsError)) },
+                { error: 'Lỗi tạo đơn hàng: ' + (error instanceof Error ? error.message : String(error)) },
                 { status: 500 }
             );
         }
 
-        console.log('✅ Order items created successfully');
+        console.log('✅ Order and order items created successfully:', order.order_id);
 
         // Return success with payment info
         return NextResponse.json({

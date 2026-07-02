@@ -36,6 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# ops docs that may contain real secrets while being written (see Constitution Principle IV)
+/roadmaps/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

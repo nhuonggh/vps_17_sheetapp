@@ -74,7 +74,7 @@ export default function ProfileDesktop({ user }: { user: ProfileUser | null }) {
         gender: ''
     });
 
-    // Load profile from Supabase
+    // Load profile via GET /api/profile
     useEffect(() => {
         const loadProfile = async () => {
             if (!user) {

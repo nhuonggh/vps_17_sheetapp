@@ -1,18 +1,28 @@
 <!--
 Sync Impact Report
-Version change: [TEMPLATE] → 1.0.0 (initial ratification)
-Modified principles: n/a (first fill of template placeholders)
-Added sections: Core Principles (I-VI), Technology Stack, Development & Deployment Workflow, Governance
+Version change: 1.0.0 → 1.1.0 (MINOR — Principle IV materially expanded)
+Modified principles: IV. Secrets Never Committed → IV. Secrets Never Committed (expanded with an
+  explicit, proactive rule for new docs/roadmap directories)
+Added sections: none (existing principle expanded, no new principle added)
 Removed sections: none
 Templates requiring updates:
   ✅ .specify/templates/plan-template.md (generic, no agent-specific refs — no change needed)
   ✅ .specify/templates/spec-template.md (generic — no change needed)
   ✅ .specify/templates/tasks-template.md (generic — no change needed)
-  ⚠ conver/1.setup_sheetappai.md and conver/2.conversuppbase.md contain live secrets (SSH
-    private key, DB password, Google client secret, registry password) and are currently
-    untracked but NOT gitignored — rotate these credentials and add conver/ to .gitignore
-    per Principle IV before next commit.
-Follow-up TODOs: none — ratification date set to date of adoption (today).
+  ✅ README.md / CLAUDE.md (checked — no principle-specific references to update)
+Rationale for this amendment: the exposure warned about in v1.0.0 (live SSH key, DB password,
+  Google client secret, registry password sitting in a tracked-eligible, non-ignored file) recurred
+  verbatim — the offending file was renamed from `conver/1.setup_sheetappai.md` /
+  `conver/2.conversuppbase.md` to `roadmaps/1.setup_sheetappai.md` / `roadmaps/2.conversuppbase.md`
+  and the new directory was again never added to `.gitignore`/`.dockerignore`. A reactive rule
+  ("rotate and fix after a leak is found") was not enough to prevent a second occurrence — Principle
+  IV now requires the ignore-file entry to be added at directory-creation time, before any secret is
+  ever written into it. See `audit_project/01_supabase_tan_du.md` §7 and
+  `audit_project/05_khuyen_nghi_hanh_dong.md` (P0) for the full incident writeup and remediation
+  checklist for the current `roadmaps/` exposure.
+Follow-up TODOs: `roadmaps/` still needs to be added to `.gitignore`/`.dockerignore` and its
+  exposed secrets rotated — tracked as P0 action items in `audit_project/05_khuyen_nghi_hanh_dong.md`,
+  not repeated here since this file governs principles, not a running task list.
 -->
 
 # SheetApp Constitution
@@ -58,9 +68,29 @@ gitignored `.env` files or GitHub Actions Secrets, never in tracked
 markdown, SQL, or scripts. Any file found to contain a live secret MUST be
 rotated (the secret invalidated and reissued) and the file corrected before
 the next commit that touches it.
-Rationale: `conver/` already holds a live SSH private key, DB password, and
-Google client secret in a tracked-eligible, non-ignored file — this is a
-live exposure, not a hypothetical one.
+
+Any new docs/roadmap directory intended to hold operational setup notes
+(VPS bring-up, deploy runbooks, migration walk-throughs, or any file likely
+to have a real credential pasted into it while writing instructions) MUST
+be added to both `.gitignore` and `.dockerignore` **at the moment the
+directory is created** — before the first secret-bearing line is written
+into any file inside it, not after. Creating the directory and writing to
+it without the ignore-file entry already in place is itself a Principle IV
+violation, independent of whether a `git add`/commit has actually happened
+yet.
+
+Rationale: this is not a hypothetical risk — it has already happened twice
+with the identical failure mode. `conver/1.setup_sheetappai.md` and
+`conver/2.conversuppbase.md` held a live SSH private key, DB password, and
+Google client secret in a tracked-eligible, non-ignored location (caught in
+the v1.0.0 ratification). The files were later renamed to
+`roadmaps/1.setup_sheetappai.md` and `roadmaps/2.conversuppbase.md` with the
+same secrets, and the new `roadmaps/` directory was again never added to
+`.gitignore`/`.dockerignore` — only a subsequent audit caught it before a
+`git add .` (the documented push workflow) could commit it. Requiring the
+ignore-file entry at directory-creation time closes the actual gap: the
+previous wording only told people to rotate and fix a leak *after* it was
+found, which visibly failed to prevent recurrence.
 
 ### V. CI/CD via GitHub Actions to VPS Docker
 Deployment MUST be reproducible from the `main` branch through GitHub
@@ -128,4 +158,4 @@ expanded guidance, PATCH for wording/clarification only. All specs, plans,
 and PRs touching auth, data access, or deployment MUST be checked against
 these principles before merge; unjustified deviation blocks merge.
 
-**Version**: 1.0.0 | **Ratified**: 2026-07-02 | **Last Amended**: 2026-07-02
+**Version**: 1.1.0 | **Ratified**: 2026-07-02 | **Last Amended**: 2026-07-02

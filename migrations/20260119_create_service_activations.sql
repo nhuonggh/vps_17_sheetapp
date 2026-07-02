@@ -105,79 +105,15 @@ CREATE INDEX IF NOT EXISTS idx_service_updates_created_by
   ON service_updates(created_by);
 
 -- ==========================================
--- 4. Row Level Security (RLS) Policies
+-- 4. Row Level Security — REMOVED (Supabase-era, incompatible with self-hosted Postgres)
 -- ==========================================
-
--- Enable RLS
-ALTER TABLE service_activations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE service_updates ENABLE ROW LEVEL SECURITY;
-
--- Drop existing policies if they exist (for idempotent reruns)
-DROP POLICY IF EXISTS "Users can view own service activations" ON service_activations;
-DROP POLICY IF EXISTS "Service role manages service activations" ON service_activations;
-DROP POLICY IF EXISTS "Admins can manage service activations" ON service_activations;
-DROP POLICY IF EXISTS "Assigned staff can view service activations" ON service_activations;
-
-DROP POLICY IF EXISTS "Users can view own service updates" ON service_updates;
-DROP POLICY IF EXISTS "Service role manages service updates" ON service_updates;
-DROP POLICY IF EXISTS "Admins can manage service updates" ON service_updates;
-
--- Service Activations Policies
-
--- Policy 1: Users can view their own service activations
-CREATE POLICY "Users can view own service activations"
-ON service_activations FOR SELECT
-USING (auth.uid() = user_id);
-
--- Policy 2: Service role can manage all (for API/webhook)
-CREATE POLICY "Service role manages service activations"
-ON service_activations FOR ALL
-USING (true); -- Service role bypasses RLS
-
--- Policy 3: Admins can manage all service activations
-CREATE POLICY "Admins can manage service activations"
-ON service_activations FOR ALL
-USING (
-  EXISTS (
-    SELECT 1 FROM profiles 
-    WHERE id = auth.uid() 
-    AND role = 'admin'
-  )
-);
-
--- Policy 4: Assigned staff can view their assigned services
-CREATE POLICY "Assigned staff can view service activations"
-ON service_activations FOR SELECT
-USING (auth.uid() = assigned_to);
-
--- Service Updates Policies
-
--- Policy 1: Users can view updates for their services
-CREATE POLICY "Users can view own service updates"
-ON service_updates FOR SELECT
-USING (
-  EXISTS (
-    SELECT 1 FROM service_activations 
-    WHERE id = service_updates.service_activation_id 
-    AND user_id = auth.uid()
-  )
-);
-
--- Policy 2: Service role can manage all
-CREATE POLICY "Service role manages service updates"
-ON service_updates FOR ALL
-USING (true);
-
--- Policy 3: Admins can manage all
-CREATE POLICY "Admins can manage service updates"
-ON service_updates FOR ALL
-USING (
-  EXISTS (
-    SELECT 1 FROM profiles 
-    WHERE id = auth.uid() 
-    AND role = 'admin'
-  )
-);
+-- The policies that used to live here (`USING (auth.uid() = user_id)`, etc.) called
+-- `auth.uid()`, a Supabase Auth helper that does not exist on plain Postgres — running them
+-- against the self-hosted `sheetapp_db` errors with "function auth.uid() does not exist".
+-- Authorization for service_activations/service_updates is enforced in the application layer
+-- instead (see `lib/auth/get-current-user.ts` `requireAuth()` + `user.id`-scoped queries in the
+-- API routes), per Constitution Principle II. RLS is intentionally left disabled on these two
+-- tables — do not re-enable it without an app-independent reason, since the app never assumes it.
 
 -- ==========================================
 -- 5. Create function to auto-update updated_at

@@ -65,7 +65,7 @@ export default function ProfileMobile({ user }: { user: ProfileUser | null }) {
         scope: ''
     });
 
-    // --- 1. FETCH DATA TỪ SUPABASE ---
+    // --- 1. FETCH DATA TỪ GET /api/profile ---
     useEffect(() => {
         const loadUserData = async () => {
             if (!user) return;

@@ -1,6 +1,15 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { authRateLimit, apiRateLimit, getClientIp } from '@/lib/ratelimit';
+import { SESSION_COOKIE, verifySession } from '@/lib/auth/session';
+
+// jwt.verify() needs Node's crypto module — not available on the default Edge runtime.
+export const runtime = 'nodejs';
+
+// Path prefixes that require a valid session. Kept as a fail-closed backstop in front of each
+// route's own requireAuth() call (defense in depth, not a replacement — routes still fetch the
+// full user row from DB themselves). Signature-only check here, no DB round trip.
+const PROTECTED_PREFIXES = ['/api/profile', '/api/feedback'];
 
 /**
  * Global middleware for rate limiting and security
@@ -17,6 +26,18 @@ export async function middleware(request: NextRequest) {
         pathname.includes('/public/')
     ) {
         return NextResponse.next();
+    }
+
+    if (PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+        const token = request.cookies.get(SESSION_COOKIE)?.value;
+        if (!token) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+        try {
+            verifySession(token);
+        } catch {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
     }
 
     // Apply strict rate limiting to authentication endpoints
