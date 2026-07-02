@@ -1,7 +1,6 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { supabase } from '@/lib/supabase';
 
 // 1. Định nghĩa Type cho sản phẩm trong giỏ
 export interface CartItem {
@@ -66,10 +65,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [items, isMounted]);
 
   const addToCart = async (product: ProductInput) => {
-    // Check if user is logged in
-    const { data: { session } } = await supabase.auth.getSession();
+    // Check if user is logged in — gọi thẳng GET /api/auth/me thay vì Supabase SDK
+    // (không dùng được useCurrentUser() ở đây vì đây là hàm gọi theo sự kiện, không
+    // phải trong thân component).
+    const meRes = await fetch('/api/auth/me');
+    const { user } = await meRes.json();
 
-    if (!session) {
+    if (!user) {
       // Redirect to login with return URL and message
       if (typeof window !== 'undefined') {
         const currentPath = window.location.pathname;

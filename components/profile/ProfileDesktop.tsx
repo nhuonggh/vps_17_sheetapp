@@ -4,6 +4,7 @@ import { User } from '@supabase/supabase-js';
 import { useState, useEffect } from 'react';
 import { User as UserIcon, Package, CalendarCheck, Bell, LogOut, CreditCard, ChevronRight, LucideIcon, Loader2, Save } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { signOut } from '@/lib/auth/client-signout';
 import { useCart } from '@/context/CartContext';
 
 // --- INTERFACES ---
@@ -107,7 +108,7 @@ export default function ProfileDesktop({ user }: { user: User | null }) {
 
     const handleLogout = async () => {
         clearCart();
-        await supabase.auth.signOut();
+        await signOut();
         window.location.href = '/';
     };
 

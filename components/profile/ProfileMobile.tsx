@@ -8,6 +8,7 @@ import {
     Ticket, UserPlus, MessageSquarePlus, Copy, Check, ShieldCheck, FileText, Target
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { signOut } from '@/lib/auth/client-signout';
 import { useCart } from '@/context/CartContext';
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 
@@ -132,7 +133,7 @@ export default function ProfileMobile({ user }: { user: User | null }) {
 
     const handleLogout = async () => {
         clearCart();
-        await supabase.auth.signOut();
+        await signOut();
         window.location.href = '/';
     };
 

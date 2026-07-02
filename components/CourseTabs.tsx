@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { PlayCircle, Lock, ChevronDown, Star, MessageSquare, Send, UserCheck, BookOpen, Book, Settings, Layers, ShieldCheck, Zap } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
-import { User } from '@supabase/supabase-js';
+import { useCurrentUser } from '@/lib/auth/use-current-user';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -24,7 +23,10 @@ type TabType = 'content' | 'instructor' | 'reviews' | 'process';
 
 export default function CourseTabs({ product }: { product: ProductProps }) {
   const [activeTab, setActiveTab] = useState<TabType>('content');
-  const [user, setUser] = useState<User | null>(null);
+  const { user: authUser } = useCurrentUser();
+  const user = authUser
+    ? { email: authUser.email, user_metadata: { avatar_url: authUser.avatar_url, full_name: authUser.name } }
+    : null;
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [openChapterIds, setOpenChapterIds] = useState<number[]>(
     product.chapters?.length > 0 ? [product.chapters[0].id] : []
@@ -32,10 +34,6 @@ export default function CourseTabs({ product }: { product: ProductProps }) {
 
   const router = useRouter();
   const isService = product.type === 'service';
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setUser(session?.user ?? null));
-  }, []);
 
   const toggleChapter = (id: number) => {
     setOpenChapterIds(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]);

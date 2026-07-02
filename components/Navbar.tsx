@@ -6,9 +6,9 @@ import {
   Package, UserPlus, CalendarCheck, Ticket, Clock, Bell, MessageSquarePlus, LogOut
 } from 'lucide-react';
 import { Sheet } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { useCurrentUser } from '@/lib/auth/use-current-user';
+import { signOut } from '@/lib/auth/client-signout';
 import { useEffect, useState } from 'react';
-import { User } from '@supabase/supabase-js';
 import { useCart } from '@/context/CartContext';
 import { APP_CONFIG } from '@/lib/constants';
 
@@ -25,26 +25,17 @@ type MenuSection = {
 };
 
 export default function Navbar() {
-  const [user, setUser] = useState<User | null>(null);
+  const { user: authUser } = useCurrentUser();
+  const user = authUser
+    ? { email: authUser.email, user_metadata: { avatar_url: authUser.avatar_url, full_name: authUser.name } }
+    : null;
   const { totalItems, clearCart } = useCart();
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     // FIX ESLINT: Dùng setTimeout(..., 0)
     const timer = setTimeout(() => setIsMounted(true), 0);
-
-    const getUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
-    };
-    getUser();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setUser(session?.user ?? null));
-
-    return () => {
-      clearTimeout(timer);
-      subscription.unsubscribe();
-    };
+    return () => clearTimeout(timer);
   }, []);
 
   // --- CẤU HÌNH MENU DỮ LIỆU (ĐÃ XÓA TIỆN ÍCH) ---
@@ -264,7 +255,7 @@ export default function Navbar() {
 
                   {/* Logout */}
                   <button
-                    onClick={async () => { clearCart(); await supabase.auth.signOut(); window.location.href = '/'; }}
+                    onClick={async () => { clearCart(); await signOut(); window.location.href = '/'; }}
                     className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
                   >
                     <LogOut className="w-4 h-4" />

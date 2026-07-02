@@ -57,29 +57,3 @@ export const supabaseServer: SupabaseClient = new Proxy({} as SupabaseClient, {
         return typeof value === 'function' ? value.bind(client) : value;
     },
 });
-
-/**
- * Helper to verify user authentication from request
- * Use this in API routes to ensure the request is from an authenticated user
- */
-export async function getServerUser(request: Request) {
-    try {
-        const authHeader = request.headers.get('authorization');
-
-        if (!authHeader) {
-            return { user: null, error: 'No authorization header' };
-        }
-
-        const token = authHeader.replace('Bearer ', '');
-
-        const { data: { user }, error } = await supabaseServer.auth.getUser(token);
-
-        if (error || !user) {
-            return { user: null, error: 'Invalid token' };
-        }
-
-        return { user, error: null };
-    } catch (error) {
-        return { user: null, error: 'Authentication failed' };
-    }
-}

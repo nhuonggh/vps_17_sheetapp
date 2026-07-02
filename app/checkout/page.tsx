@@ -6,11 +6,12 @@ import { useState, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, ShoppingCart, CheckCircle, Loader2, Package } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { useCurrentUser } from '@/lib/auth/use-current-user';
 
 export default function CheckoutPage() {
     const { items, totalAmount, totalItems, clearCart } = useCart();
     const router = useRouter();
+    const { user: authUser } = useCurrentUser();
     const [currentStep, setCurrentStep] = useState(1);
     const [isProcessing, setIsProcessing] = useState(false);
     const [orderData, setOrderData] = useState<any>(null);
@@ -21,43 +22,17 @@ export default function CheckoutPage() {
         phone: '',
     });
 
-    // Auto-fill customer info from logged-in user profile
+    // Auto-fill tên/email từ user đã đăng nhập (GET /api/auth/me qua useCurrentUser).
+    // `phone` không nằm trong dữ liệu session — để trống, người dùng tự nhập
+    // (autofill phone qua bảng profiles thuộc phạm vi spec CRUD kế tiếp).
     useEffect(() => {
-        const loadUserProfile = async () => {
-            try {
-                // Get current user session
-                const { data: { session } } = await supabase.auth.getSession();
-
-                if (session?.user) {
-                    // Fetch user profile from profiles table
-                    const { data: profile, error } = await supabase
-                        .from('profiles')
-                        .select('full_name, name, email, phone')
-                        .eq('id', session.user.id)
-                        .single();
-
-                    if (!error && profile) {
-                        // Auto-fill customer info
-                        setCustomerInfo({
-                            name: profile.full_name || profile.name || '',
-                            email: profile.email || session.user.email || '',
-                            phone: profile.phone || '',
-                        });
-                    } else {
-                        // Fallback to user email from session
-                        setCustomerInfo(prev => ({
-                            ...prev,
-                            email: session.user.email || '',
-                        }));
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading user profile:', error);
-            }
-        };
-
-        loadUserProfile();
-    }, []);
+        if (!authUser) return;
+        setCustomerInfo(prev => ({
+            ...prev,
+            name: prev.name || authUser.name || '',
+            email: prev.email || authUser.email || '',
+        }));
+    }, [authUser]);
 
     // Redirect if cart is empty
     useEffect(() => {

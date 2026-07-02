@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { ShoppingCart, Search, Menu, X, Phone, Filter, ChevronDown } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
-import { User } from '@supabase/supabase-js';
+import { useCurrentUser } from '@/lib/auth/use-current-user';
+import { signOut } from '@/lib/auth/client-signout';
 import { useRouter, usePathname } from 'next/navigation';
 import { APP_CONFIG } from '@/lib/constants';
 
@@ -16,17 +16,15 @@ export default function MobileHeader() {
   const router = useRouter();
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
+  const { user: authUser } = useCurrentUser();
+  const user = authUser
+    ? { email: authUser.email, user_metadata: { full_name: authUser.name } }
+    : null;
   const [keyword, setKeyword] = useState('');
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsMounted(true), 0);
-    const getUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
-    };
-    getUser();
     return () => clearTimeout(timer);
   }, []);
 
@@ -162,7 +160,7 @@ export default function MobileHeader() {
               ))}
               <div className="pt-4 border-t border-gray-100">
                 {user && (
-                  <button onClick={async () => { clearCart(); await supabase.auth.signOut(); window.location.reload(); }} className="w-full text-left p-3 text-sm text-red-600 font-medium">Đăng xuất</button>
+                  <button onClick={async () => { clearCart(); await signOut(); window.location.reload(); }} className="w-full text-left p-3 text-sm text-red-600 font-medium">Đăng xuất</button>
                 )}
               </div>
             </div>

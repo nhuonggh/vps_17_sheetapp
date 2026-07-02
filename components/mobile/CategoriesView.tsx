@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { ShoppingCart, Search, Filter, Phone, ChevronDown, Menu, X, Briefcase, Cpu, Check, RotateCcw, DollarSign } from 'lucide-react';
 import { APP_CONFIG, FILTER_TREE } from '@/lib/constants';
 import { useCart } from '@/context/CartContext';
-import { supabase } from '@/lib/supabase';
-import { User } from '@supabase/supabase-js';
+import { useCurrentUser } from '@/lib/auth/use-current-user';
+import { signOut } from '@/lib/auth/client-signout';
 import { useSearchParams } from 'next/navigation';
 
 // --- TYPES ---
@@ -160,21 +160,16 @@ export default function CategoriesViewMobile({ products, loading, formatPrice }:
   const [keyword, setKeyword] = useState('');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showFilterDrawer, setShowFilterDrawer] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
+  const { user: authUser } = useCurrentUser();
+  const user = authUser
+    ? { email: authUser.email, user_metadata: { avatar_url: authUser.avatar_url, full_name: authUser.name } }
+    : null;
 
   // State Filter Data
   const [activeIndustries, setActiveIndustries] = useState<string[]>([]);
   const [activeTechs, setActiveTechs] = useState<string[]>([]);
-  const [activeCosts, setActiveCosts] = useState<string[]>(['free', 'paid']); 
+  const [activeCosts, setActiveCosts] = useState<string[]>(['free', 'paid']);
   const [filterMode, setFilterMode] = useState<'price' | 'industry' | 'tech'>('price');
-
-  useEffect(() => {
-    const getUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
-    };
-    getUser();
-  }, []);
 
   // FIX LỖI SET STATE IN EFFECT
   useEffect(() => {
@@ -506,7 +501,7 @@ export default function CategoriesViewMobile({ products, loading, formatPrice }:
                             </div>
                         ))}
                         <div className="pt-4 border-t border-gray-100">
-                            {user && <button onClick={async () => { await supabase.auth.signOut(); window.location.reload(); }} className="w-full text-left p-3 text-sm text-red-600 font-medium">Đăng xuất</button>}
+                            {user && <button onClick={async () => { await signOut(); window.location.reload(); }} className="w-full text-left p-3 text-sm text-red-600 font-medium">Đăng xuất</button>}
                         </div>
                     </div>
                 </div>
