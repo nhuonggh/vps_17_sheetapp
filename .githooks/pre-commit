@@ -1,0 +1,16 @@
+#!/bin/sh
+# Blocks commits that contain secrets (SSH keys, passwords, API tokens, ...).
+# Setup (one-time, per clone): git config core.hooksPath .githooks
+# Install gitleaks: https://github.com/gitleaks/gitleaks#installing
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "[pre-commit] gitleaks not installed — skipping secret scan (install it: https://github.com/gitleaks/gitleaks#installing)" >&2
+  exit 0
+fi
+
+gitleaks protect --staged --verbose
+if [ $? -ne 0 ]; then
+  echo "[pre-commit] gitleaks found a potential secret in staged changes — commit blocked." >&2
+  echo "[pre-commit] Remove the secret or add an allowlist rule in .gitleaks.toml if this is a false positive." >&2
+  exit 1
+fi

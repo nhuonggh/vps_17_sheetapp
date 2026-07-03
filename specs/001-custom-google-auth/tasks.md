@@ -122,11 +122,11 @@ hạn (hoặc chờ) → truy cập bị từ chối tương tự.
       `components/MobileHeader.tsx`, `components/mobile/CategoriesView.tsx` — thay
       `supabase.auth.signOut()` bằng `signOut()` (T009)
 - [X] T024 [US2] Quyết định `app/update-password/page.tsx`: đăng nhập giờ chỉ qua Google (không
-      còn mật khẩu nội bộ) → route này không còn áp dụng được. THỰC HIỆN: T012 đã viết lại
-      `app/login/page.tsx` bỏ hẳn toàn bộ UI email/mật khẩu/đăng ký/quên mật khẩu (không chỉ
-      Facebook) — không còn nút "Quên mật khẩu?" nào trỏ tới `/update-password` nữa, lối vào duy
-      nhất đã bị gỡ mà không cần sửa thêm gì trong `update-password/page.tsx`. Route vẫn còn (không
-      xoá, tránh 404 cho bookmark cũ) nhưng unreachable từ UI.
+      còn mật khẩu nội bộ) → route này không còn áp dụng được. THỰC HIỆN (cập nhật 2026-07-03,
+      khớp thực tế thay vì quyết định gốc): `app/update-password/` đã bị xoá hẳn khỏi repo — không
+      còn nút "Quên mật khẩu?" nào trỏ tới route này (T012 gỡ hết UI email/mật khẩu ở
+      `app/login/page.tsx`), và giữ lại 1 route chết không phục vụ mục đích gì. Chấp nhận 404 cho
+      bookmark cũ thay vì giữ trang inert.
 - [X] T025 [US2] Verify thủ công theo quickstart.md bước 4: `curl -i -X POST
       /api/auth/logout` trong container Docker thật → xác nhận header
       `Set-Cookie: session=; Path=/; Max-Age=0` đúng như mong đợi
@@ -168,14 +168,11 @@ trong JWT hợp lệ rồi gọi lại → vẫn 401.
       xác nhận không còn nơi nào gọi (`grep -r "getServerUser"` chỉ ra chính file định nghĩa),
       là logic Supabase Auth còn sót trong file vốn giữ lại cho mục đích CRUD (không xoá cả file,
       chỉ xoá hàm này + phần comment liên quan)
-- [ ] T030 Xoá `lib/supabase.ts` SAU KHI xác nhận không còn file nào import (`grep -r "from
-      '@/lib/supabase'"` phải chỉ còn ra `lib/supabase-server.ts`-liên-quan, không còn client-side
-      nào) — nếu vẫn còn chỗ dùng ngoài phạm vi auth (vd. `components/ProductList.tsx`,
-      `components/BookingModal.tsx`, `components/ConsultationModal.tsx`) thì GIỮ LẠI, vì đó thuộc
-      phạm vi spec CRUD kế tiếp, không xoá vội làm gãy trang khác
-- [ ] T031 Gỡ `@supabase/supabase-js` khỏi `package.json` CHỈ KHI T030 xác nhận không còn import
-      nào trong toàn repo (kể cả `lib/supabase-server.ts` và các route CRUD — nếu còn thì để lại
-      cho spec CRUD xử lý)
+- [X] T030 Xoá `lib/supabase.ts` SAU KHI xác nhận không còn file nào import — xác nhận
+      2026-07-03: `lib/supabase.ts` không còn tồn tại trong repo, `grep -r "@/lib/supabase'"`
+      không trả kết quả nào
+- [X] T031 Gỡ `@supabase/supabase-js` khỏi `package.json` — xác nhận 2026-07-03:
+      `package.json`/`package-lock.json` không còn dependency này
 - [X] T032 Chạy `docker build` thật (Linux, không phải Windows local — xem lý do ở lịch sử CI
       trước đó) → build thành công, `docker run` smoke test → homepage 200,
       `/api/auth/me` không cookie → `{user:null}`, `/api/auth/google` token rác → 401,

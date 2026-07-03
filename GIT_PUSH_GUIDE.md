@@ -1,31 +1,27 @@
 # 🚀 Git Push Commands
 
+> ⚠️ Push vào `main` tự động build & deploy production (`.github/workflows/deploy.yml`) — không có
+> PR/review gate. Kiểm tra kỹ `git status`/`git diff` trước khi commit, đặc biệt các thư mục docs/
+> roadmap mới có thể chứa secret (xem `.specify/memory/constitution.md` Principle IV).
+
 ## Bước 1: Check Status
 ```bash
 git status
+git diff
 ```
 
-## Bước 2: Add All Changes
+## Bước 2: Add Changes (chỉ định rõ file, không add mù)
 ```bash
-git add .
+# Add từng file/thư mục đã review — KHÔNG dùng `git add .` khi có file mới chưa chắc chắn
+git add path/to/file1 path/to/file2
+
+# Nếu chắc chắn mọi thay đổi đều an toàn (đã đọc qua `git status` phía trên), có thể add all:
+git add -A
 ```
 
 ## Bước 3: Commit với Message
 ```bash
-git commit -m "feat: Implement PayOS auto-enrollment system
-
-- ✅ Added enrollments and failed_enrollments tables
-- ✅ Implemented auto-enrollment logic in lib/auto-enrollment.ts
-- ✅ Enhanced webhook handler with email notifications
-- ✅ Guest user handling with failed_enrollments logging
-- ✅ Fixed payment callback page for production build
-- ✅ Added comprehensive testing suite
-- ✅ Created detailed documentation
-
-Tested and verified:
-- Registered users auto-enroll successfully
-- Guest users logged to failed_enrollments
-- Ready for production deployment"
+git commit -m "feat: mô tả ngắn gọn thay đổi"
 ```
 
 ## Bước 4: Push to GitHub
@@ -38,35 +34,24 @@ Hoặc nếu branch khác:
 git push origin <branch-name>
 ```
 
-## 🔄 Nếu cần force push (CAREFUL!)
+## 🔄 Force push (CAREFUL — ghi đè lịch sử remote)
 ```bash
-# Only if you know what you're doing
+# Chỉ dùng khi chắc chắn không ai khác đang dựa vào commit bị ghi đè
 git push -f origin main
 ```
 
 ---
 
-## 📝 Alternative: Shorter Commit Message
+## 🔒 Secret scanning trước khi push
+
+Repo có hook `gitleaks` chặn commit chứa secret (SSH key, password, API key...). Cài 1 lần:
+
 ```bash
-git commit -m "feat: PayOS auto-enrollment - production ready"
+git config core.hooksPath .githooks
 ```
 
----
-
-## ✅ Complete Sequence (Copy & Paste)
-```bash
-# Check changes
-git status
-
-# Add all
-git add .
-
-# Commit
-git commit -m "feat: Implement PayOS auto-enrollment system with testing suite"
-
-# Push
-git push origin main
-```
+Nếu chưa có `gitleaks` trên máy, hook sẽ tự bỏ qua và in cảnh báo — cài thêm để bảo vệ đầy đủ:
+https://github.com/gitleaks/gitleaks#installing
 
 ---
 

@@ -55,10 +55,8 @@ tầm với của tool — VPS/Google Console/GitHub/PayOS dashboard).
   mới, curl `localhost:3017` retry 15 lần (30s); nếu không lên được, dừng container mới, in log, và
   tự khởi động lại image cũ (`PREV_IMAGE` lưu trước khi pull) — workflow fail rõ ràng thay vì để
   container chết âm thầm.
-- [ ] **Chưa xử lý, cần bạn xác nhận** — `next.config.ts` còn whitelist `**.supabase.co` trong
-  `images.remotePatterns`. Không tự gỡ vì không chắc ảnh/avatar hiện tại có còn trỏ Supabase Storage
-  hay không (ngoài phạm vi migrate CRUD lần này theo `specs/002-postgres-crud-migration/spec.md`) —
-  bạn kiểm tra thực tế rồi báo, tool sẽ gỡ nếu xác nhận không còn dùng.
+- [x] `next.config.ts` gỡ whitelist `**.supabase.co` khỏi `images.remotePatterns` — xác nhận
+  2026-07-03: ảnh/avatar không còn dùng Supabase Storage.
 
 ## 🟡 P2 — Dọn dẹp, không khẩn
 
@@ -78,7 +76,15 @@ tầm với của tool — VPS/Google Console/GitHub/PayOS dashboard).
 - [ ] **Còn cần bạn tự quyết định** — thêm branching strategy tối thiểu (PR review trước khi merge
   `main`) thay vì push thẳng `main` luôn tự động deploy — đây là quyết định quy trình làm việc, tool
   không tự áp đặt.
-- [ ] **Còn cần bạn tự làm** — thêm secret-scanning pre-commit hook (gitleaks/trufflehog) nếu muốn.
+- [x] Thêm secret-scanning pre-commit hook: `.githooks/pre-commit` chạy `gitleaks protect --staged`
+  (skip nếu chưa cài gitleaks, không chặn commit). **Còn cần bạn tự làm**: chạy 1 lần
+  `git config core.hooksPath .githooks` trên máy dev (tool không tự sửa git config theo quy tắc an
+  toàn) và cài `gitleaks` nếu chưa có (https://github.com/gitleaks/gitleaks#installing). Đã cập nhật
+  hướng dẫn trong `GIT_PUSH_GUIDE.md` (cũng bỏ khuyến khích `git add .` mù quáng, thêm cảnh báo push
+  `main` = deploy production ngay).
+- [x] `specs/001-custom-google-auth/tasks.md`: sửa T024 khớp thực tế (`app/update-password/` đã bị
+  xoá, chấp nhận 404 thay vì "giữ route"), tick lại T030/T031 (đã xong từ trước, checkbox chỉ chưa
+  cập nhật).
 
 ## Đã hoàn tất — Constitution
 
