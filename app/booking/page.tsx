@@ -1,8 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import { MapPin, Phone, Mail, Clock, CalendarCheck } from 'lucide-react';
+import BookingModal from '@/components/BookingModal';
 
 export default function BookingPage() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   return (
     <main className="min-h-screen bg-gray-50 pb-20 pt-safe">
       <div className="max-w-3xl mx-auto px-4 py-8">
@@ -59,32 +63,24 @@ export default function BookingPage() {
             </div>
         </div>
 
-        {/* Form Đặt lịch đơn giản (Nếu cần) */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <CalendarCheck className="w-5 h-5 text-emerald-600" />
-                Đăng ký tư vấn
-            </h2>
-            <form className="space-y-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Họ và tên</label>
-                    <input type="text" className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-emerald-500 transition-colors" placeholder="Nhập họ tên của bạn" />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại</label>
-                    <input type="tel" className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-emerald-500 transition-colors" placeholder="Nhập số điện thoại" />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Nội dung cần tư vấn</label>
-                    <textarea rows={4} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-emerald-500 transition-colors" placeholder="Bạn quan tâm đến khóa học hay dịch vụ nào?"></textarea>
-                </div>
-                <button type="button" className="w-full bg-emerald-600 text-white font-bold py-3 rounded-lg hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-200">
-                    Gửi yêu cầu
-                </button>
-            </form>
+        {/* Đăng ký tư vấn — mở BookingModal thật (có CAPTCHA + gọi /api/bookings), thay vì
+            form tĩnh trước đây không có onSubmit/onChange nên bấm gửi không làm gì cả. */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-center">
+            <CalendarCheck className="w-10 h-10 text-emerald-600 mx-auto mb-3" />
+            <h2 className="text-lg font-bold text-gray-900 mb-2">Đăng ký tư vấn</h2>
+            <p className="text-sm text-gray-500 mb-5">Để lại thông tin, chuyên gia SheetApp sẽ liên hệ tư vấn giải pháp phù hợp nhất cho bạn.</p>
+            <button
+                type="button"
+                onClick={() => setIsModalOpen(true)}
+                className="w-full bg-emerald-600 text-white font-bold py-3 rounded-lg hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-200"
+            >
+                Gửi yêu cầu tư vấn
+            </button>
         </div>
 
       </div>
+
+      <BookingModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </main>
   );
 }

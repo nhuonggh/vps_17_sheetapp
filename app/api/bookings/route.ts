@@ -1,9 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { verifyCaptchaToken } from '@/lib/captcha';
+import { formRateLimit, getClientIp } from '@/lib/ratelimit';
 
 export async function POST(request: NextRequest) {
     try {
-        const { fullName, phone, message } = await request.json();
+        const { success: withinLimit } = await formRateLimit.limit(getClientIp(request));
+        if (!withinLimit) {
+            return NextResponse.json({ error: 'Quá nhiều yêu cầu, vui lòng thử lại sau' }, { status: 429 });
+        }
+
+        const { fullName, phone, message, captchaToken } = await request.json();
+
+        const captcha = await verifyCaptchaToken(captchaToken);
+        if (!captcha.success) {
+            return NextResponse.json({ error: 'Xác thực CAPTCHA thất bại' }, { status: 403 });
+        }
 
         if (!fullName || !phone) {
             return NextResponse.json({ error: 'Thiếu thông tin bắt buộc' }, { status: 400 });

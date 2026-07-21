@@ -1,24 +1,22 @@
 /**
  * PayOS Payment Gateway Integration
  * Documentation: https://payos.vn/docs
- * 
- * Using dynamic import to avoid Next.js 15 build issues with constructor
+ *
+ * @payos/node v2 exposes a PayOS class (object constructor options), not the
+ * positional-args v1 API. Resources live under payOS.webhooks / payOS.paymentRequests.
  */
 
-// PayOS instance cache
-let payOSInstance: any = null;
+import { PayOS } from '@payos/node';
 
-async function getPayOS() {
+let payOSInstance: PayOS | null = null;
+
+function getPayOS(): PayOS {
     if (!payOSInstance) {
-        // Dynamic import to avoid build-time constructor issues
-        const PayOSModule = await import('@payos/node');
-        const PayOSClient = PayOSModule.default || PayOSModule;
-
-        payOSInstance = new (PayOSClient as any)(
-            process.env.PAYOS_CLIENT_ID || '',
-            process.env.PAYOS_API_KEY || '',
-            process.env.PAYOS_CHECKSUM_KEY || ''
-        );
+        payOSInstance = new PayOS({
+            clientId: process.env.PAYOS_CLIENT_ID || '',
+            apiKey: process.env.PAYOS_API_KEY || '',
+            checksumKey: process.env.PAYOS_CHECKSUM_KEY || '',
+        });
     }
     return payOSInstance;
 }
@@ -43,7 +41,7 @@ export async function createPaymentLink(orderData: {
 }) {
     try {
         const domain = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-        const payOS = await getPayOS();
+        const payOS = getPayOS();
 
         // PayOS payment link creation
         // PayOS requirements:
@@ -51,7 +49,7 @@ export async function createPaymentLink(orderData: {
         // - description: max 9 chars for non-linked accounts
         const orderCodeInt = Math.floor(Date.now() / 1000); // Unix timestamp as unique int
 
-        const paymentLinkResponse = await payOS.createPaymentLink({
+        const paymentLinkResponse = await payOS.paymentRequests.create({
             orderCode: orderCodeInt,
             amount: orderData.amount,
             description: orderData.description.substring(0, 9), // Max 9 chars per PayOS spec
@@ -83,34 +81,36 @@ export async function createPaymentLink(orderData: {
 }
 
 /**
- * Verify webhook signature from PayOS
- * @param webhookData Webhook data from PayOS
- * @param signature Signature header from webhook request
- * @returns Whether the webhook is valid
+ * Verify webhook payload from PayOS (signature lives inside the body, not a header).
+ * @param webhookData Full parsed webhook body: { code, desc, data, signature }
+ * @returns Verified `data` on success; `valid:false` if signature/data invalid
  */
 export async function verifyWebhookSignature(
-    webhookData: any,
-    signature: string
-): Promise<boolean> {
+    webhookData: any
+): Promise<{ valid: boolean; data?: any }> {
     try {
-        const payOS = await getPayOS();
-        const isValid = payOS.verifyPaymentWebhookData(webhookData);
-        return isValid;
+        const payOS = getPayOS();
+        const data = await payOS.webhooks.verify(webhookData);
+        return { valid: true, data };
     } catch (error) {
         console.error('PayOS webhook verification error:', error);
-        return false;
+        return { valid: false };
     }
 }
 
 /**
  * Get payment information from PayOS
- * @param orderCode Order code to check
+ * @param id Payment link ID or order code to check
  * @returns Payment info
  */
-export async function getPaymentInfo(orderCode: number) {
+export async function getPaymentInfo(id: string | number) {
     try {
-        const payOS = await getPayOS();
-        const paymentInfo = await payOS.getPaymentLinkInformation(orderCode);
+        const payOS = getPayOS();
+        // Narrow to one overload at a time — a bare `string | number` union doesn't
+        // match either `get(paymentLinkId: string)` / `get(orderCode: number)` signature.
+        const paymentInfo = typeof id === 'number'
+            ? await payOS.paymentRequests.get(id)
+            : await payOS.paymentRequests.get(id);
         return {
             success: true,
             data: paymentInfo,
@@ -126,13 +126,15 @@ export async function getPaymentInfo(orderCode: number) {
 
 /**
  * Cancel a payment link
- * @param orderCode Order code to cancel
+ * @param id Payment link ID or order code to cancel
  * @returns Cancel result
  */
-export async function cancelPaymentLink(orderCode: number) {
+export async function cancelPaymentLink(id: string | number, cancellationReason?: string) {
     try {
-        const payOS = await getPayOS();
-        const cancelResult = await payOS.cancelPaymentLink(orderCode);
+        const payOS = getPayOS();
+        const cancelResult = typeof id === 'number'
+            ? await payOS.paymentRequests.cancel(id, cancellationReason)
+            : await payOS.paymentRequests.cancel(id, cancellationReason);
         return {
             success: true,
             data: cancelResult,

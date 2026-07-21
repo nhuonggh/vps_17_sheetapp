@@ -6,7 +6,7 @@
 import { query } from '@/lib/db';
 import { Resend } from 'resend';
 
-interface Order {
+export interface Order {
     id: string;
     order_id: string;
     customer_name: string;
@@ -225,6 +225,79 @@ async function findOrCreateUserProfile(
     } catch (error) {
         console.error('Exception in findOrCreateUserProfile:', error);
         return null;
+    }
+}
+
+/**
+ * Run enrollment + email notification for an order that just turned 'paid'.
+ * Shared by the PayOS webhook and the manual "I've paid" verify endpoint so both
+ * paths behave identically instead of duplicating this logic.
+ */
+export async function processSuccessfulPayment(order: Order): Promise<void> {
+    try {
+        console.log(`🎓 Initiating auto-enrollment for order ${order.order_id}`);
+        await enrollUserInProducts(order);
+        console.log(`✅ Auto-enrollment completed`);
+
+        try {
+            const orderItemsResult = await query<{ product_id: number; quantity: number; price_at_purchase: number }>(
+                'SELECT product_id, quantity, price_at_purchase FROM order_items WHERE order_id = $1',
+                [order.id]
+            );
+            const orderItems = orderItemsResult.rows;
+
+            if (orderItems && orderItems.length > 0) {
+                const productIds = orderItems.map(item => item.product_id);
+                const productsResult = await query<{ id: number; name: string }>(
+                    'SELECT id, name FROM products WHERE id = ANY($1)',
+                    [productIds]
+                );
+                const products = productsResult.rows;
+
+                const enrichedItems = orderItems.map(item => ({
+                    product_id: item.product_id,
+                    product_name: products?.find(p => p.id === item.product_id)?.name || 'Unknown Product',
+                    quantity: item.quantity,
+                    price: item.price_at_purchase
+                }));
+
+                await sendEnrollmentEmail(
+                    order.customer_email,
+                    enrichedItems,
+                    {
+                        order_id: order.order_id || 'N/A',
+                        total_amount: order.total_amount
+                    }
+                );
+                console.log(`📧 Email notification queued for ${order.customer_email}`);
+            }
+        } catch (emailError) {
+            console.error('⚠️ Email send failed (non-critical):', emailError);
+            // Don't fail the caller for email errors
+        }
+
+    } catch (enrollError: any) {
+        console.error('❌ Auto-enrollment failed:', enrollError);
+
+        // Log to failed_enrollments table for retry
+        try {
+            await query(
+                `INSERT INTO failed_enrollments (
+                    order_id, customer_email, error_message, error_details, retry_count, created_at
+                ) VALUES ($1, $2, $3, $4, 0, NOW())`,
+                [
+                    order.order_id,
+                    order.customer_email,
+                    enrollError?.message || 'Unknown error',
+                    JSON.stringify({ stack: enrollError?.stack, code: enrollError?.code }),
+                ]
+            );
+            console.log(`📝 Logged to failed_enrollments for manual review`);
+        } catch (logError) {
+            console.error('Failed to log enrollment error:', logError);
+        }
+
+        // Don't throw - payment is already processed; can be retried manually or via cron job
     }
 }
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { User as UserIcon, Package, CalendarCheck, Bell, LogOut, CreditCard, ChevronRight, LucideIcon, Loader2, Save } from 'lucide-react';
 import { signOut } from '@/lib/auth/client-signout';
 import { useCart } from '@/context/CartContext';
@@ -19,15 +20,23 @@ interface Profile {
     created_via?: string;
 }
 
-// --- MOCK DATA ---
-const MOCK_ASSETS = [
-    { id: 1, name: 'Khóa học AppSheet Master', type: 'Course', image: 'https://via.placeholder.com/150' },
-    { id: 2, name: 'Template Quản lý Kho', type: 'Service', image: 'https://via.placeholder.com/150' },
-];
-const MOCK_ORDERS = [
-    { id: 'DH001', date: '05/01/2026', total: '1.500.000đ', status: 'Hoàn thành' },
-    { id: 'DH002', date: '01/01/2026', total: '500.000đ', status: 'Đang xử lý' },
-];
+interface Asset {
+    product_id: number;
+    product_name: string;
+    thumbnail_url: string | null;
+    slug: string;
+    type: 'course' | 'service';
+    acquired_at: string;
+    status: string | null;
+}
+
+interface Order {
+    order_id: string;
+    created_at: string;
+    total_amount: number;
+    status: string;
+    items: { product_name: string; quantity: number; price: number }[];
+}
 
 // --- SIDEBAR ITEM COMPONENT ---
 interface SidebarItemProps {
@@ -60,11 +69,18 @@ interface ProfileUser {
 
 export default function ProfileDesktop({ user }: { user: ProfileUser | null }) {
     const { clearCart } = useCart();
-    const [activeTab, setActiveTab] = useState('info');
+    const searchParams = useSearchParams();
+    const initialTab = searchParams.get('tab');
+    const [activeTab, setActiveTab] = useState(initialTab && ['info', 'assets', 'orders', 'bookings', 'notifs'].includes(initialTab) ? initialTab : 'info');
     const [profile, setProfile] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+    const [assets, setAssets] = useState<Asset[]>([]);
+    const [assetsLoading, setAssetsLoading] = useState(false);
+    const [orders, setOrders] = useState<Order[]>([]);
+    const [ordersLoading, setOrdersLoading] = useState(false);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -104,6 +120,29 @@ export default function ProfileDesktop({ user }: { user: ProfileUser | null }) {
 
         loadProfile();
     }, [user]);
+
+    // Load assets/orders lazily the first time each tab is opened
+    useEffect(() => {
+        if (!user) return;
+
+        if (activeTab === 'assets' && assets.length === 0 && !assetsLoading) {
+            setAssetsLoading(true);
+            fetch('/api/profile/assets')
+                .then((res) => res.json())
+                .then(({ assets: data }) => setAssets(data ?? []))
+                .catch((error) => console.error('Error loading assets:', error))
+                .finally(() => setAssetsLoading(false));
+        }
+
+        if (activeTab === 'orders' && orders.length === 0 && !ordersLoading) {
+            setOrdersLoading(true);
+            fetch('/api/profile/orders')
+                .then((res) => res.json())
+                .then(({ orders: data }) => setOrders(data ?? []))
+                .catch((error) => console.error('Error loading orders:', error))
+                .finally(() => setOrdersLoading(false));
+        }
+    }, [activeTab, user, assets.length, assetsLoading, orders.length, ordersLoading]);
 
     const handleLogout = async () => {
         clearCart();
@@ -343,49 +382,70 @@ export default function ProfileDesktop({ user }: { user: ProfileUser | null }) {
 
                         {/* CONTENT - ASSETS */}
                         {activeTab === 'assets' && (
-                            <div className="grid grid-cols-3 gap-6">
-                                {MOCK_ASSETS.map(item => (
-                                    <div key={item.id} className="border border-gray-100 rounded-xl overflow-hidden hover:shadow-lg transition-all group">
-                                        <div className="h-32 bg-gray-200 relative">
-                                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                                            <img src={item.image} className="w-full h-full object-cover" alt="" />
-                                            <span className="absolute top-2 right-2 bg-emerald-600 text-white text-[10px] px-2 py-1 rounded font-bold">{item.type}</span>
+                            assetsLoading ? (
+                                <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-emerald-600" /></div>
+                            ) : assets.length === 0 ? (
+                                <div className="text-center py-20 text-gray-400">
+                                    <Package className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                                    Chưa có tài sản nào. Hãy mua khóa học hoặc dịch vụ để bắt đầu!
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-3 gap-6">
+                                    {assets.map(item => (
+                                        <div key={`${item.type}-${item.product_id}`} className="border border-gray-100 rounded-xl overflow-hidden hover:shadow-lg transition-all group">
+                                            <div className="h-32 bg-gray-200 relative">
+                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                <img src={item.thumbnail_url || 'https://via.placeholder.com/300x150'} className="w-full h-full object-cover" alt={item.product_name} />
+                                                <span className="absolute top-2 right-2 bg-emerald-600 text-white text-[10px] px-2 py-1 rounded font-bold">{item.type === 'course' ? 'Khóa học' : 'Dịch vụ'}</span>
+                                            </div>
+                                            <div className="p-4">
+                                                <h4 className="font-bold text-gray-800 mb-2 group-hover:text-emerald-600">{item.product_name}</h4>
+                                                {item.type === 'course' ? (
+                                                    <a href={`/product/${item.slug}`} className="block w-full text-center py-2 bg-emerald-50 text-emerald-700 font-bold text-xs rounded hover:bg-emerald-600 hover:text-white transition-colors">Truy cập</a>
+                                                ) : (
+                                                    <span className="block w-full text-center py-2 bg-gray-50 text-gray-600 font-bold text-xs rounded">{item.status === 'pending' ? 'Đang xử lý' : item.status || 'Đang xử lý'}</span>
+                                                )}
+                                            </div>
                                         </div>
-                                        <div className="p-4">
-                                            <h4 className="font-bold text-gray-800 mb-2 group-hover:text-emerald-600">{item.name}</h4>
-                                            <button className="w-full py-2 bg-emerald-50 text-emerald-700 font-bold text-xs rounded hover:bg-emerald-600 hover:text-white transition-colors">Truy cập</button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                                    ))}
+                                </div>
+                            )
                         )}
 
                         {/* CONTENT - ORDERS */}
                         {activeTab === 'orders' && (
-                            <table className="w-full text-left text-sm">
-                                <thead className="bg-gray-50 text-gray-500">
-                                    <tr>
-                                        <th className="p-3">Mã đơn</th>
-                                        <th className="p-3">Ngày mua</th>
-                                        <th className="p-3">Tổng tiền</th>
-                                        <th className="p-3">Trạng thái</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {MOCK_ORDERS.map(order => (
-                                        <tr key={order.id} className="border-b border-gray-50 hover:bg-gray-50">
-                                            <td className="p-3 font-bold">{order.id}</td>
-                                            <td className="p-3 text-gray-600">{order.date}</td>
-                                            <td className="p-3 font-bold text-emerald-600">{order.total}</td>
-                                            <td className="p-3">
-                                                <span className={`text-xs px-2 py-1 rounded-full ${order.status === 'Hoàn thành' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                                                    {order.status}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                            ordersLoading ? (
+                                <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-emerald-600" /></div>
+                            ) : orders.length === 0 ? (
+                                <div className="text-center py-20 text-gray-400">Chưa có đơn hàng nào.</div>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-gray-50 text-gray-500">
+                                            <tr>
+                                                <th className="p-3">Mã đơn</th>
+                                                <th className="p-3">Ngày mua</th>
+                                                <th className="p-3">Sản phẩm</th>
+                                                <th className="p-3">Tổng tiền</th>
+                                                <th className="p-3">Trạng thái</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {orders.map(order => (
+                                                <tr key={order.order_id} className="border-b border-gray-50 hover:bg-gray-50">
+                                                    <td className="p-3 font-bold">{order.order_id}</td>
+                                                    <td className="p-3 text-gray-600">{new Date(order.created_at).toLocaleDateString('vi-VN')}</td>
+                                                    <td className="p-3 text-gray-600">{order.items.map(i => i.product_name).join(', ')}</td>
+                                                    <td className="p-3 font-bold text-emerald-600">{order.total_amount.toLocaleString('vi-VN')}đ</td>
+                                                    <td className="p-3">
+                                                        <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">Hoàn thành</span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )
                         )}
 
                         {/* CONTENT - BOOKINGS & NOTIFS */}

@@ -152,7 +152,7 @@ export default function PaymentSuccessPage() {
                         </Link>
 
                         <Link
-                            href="/my-orders"
+                            href="/profile?tab=orders"
                             className="flex-1 border-2 border-emerald-600 text-emerald-600 font-bold py-4 px-6 rounded-xl hover:bg-emerald-50 transition-colors text-center"
                         >
                             Xem đơn hàng

@@ -1,9 +1,15 @@
 import { NextResponse } from 'next/server';
 import { requireAuth, UnauthorizedError } from '@/lib/auth/get-current-user';
 import { query } from '@/lib/db';
+import { formRateLimit, getClientIp } from '@/lib/ratelimit';
 
 export async function POST(request: Request) {
     try {
+        const { success: withinLimit } = await formRateLimit.limit(getClientIp(request));
+        if (!withinLimit) {
+            return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+        }
+
         const user = await requireAuth();
         const { content, type } = await request.json();
 

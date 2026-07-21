@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { getPaymentInfo } from '@/lib/payos';
+import { processSuccessfulPayment, type Order } from '@/lib/auto-enrollment';
 
 export async function POST(request: NextRequest) {
     try {
@@ -57,24 +58,30 @@ export async function POST(request: NextRequest) {
 
             // 6. Check if payment is completed
             if (paymentInfo.data.status === 'PAID') {
+                const transactionId = paymentInfo.data.id || `TXN-${Date.now()}`;
+
                 // Update order to paid
                 try {
                     await query(
                         `UPDATE orders SET status = 'paid', paid_at = $1, transaction_id = $2 WHERE order_id = $3`,
-                        [new Date().toISOString(), paymentInfo.data.id || paymentInfo.data.transactionId, orderId]
+                        [new Date().toISOString(), transactionId, orderId]
                     );
                 } catch (updateError) {
                     console.error('Error updating order:', updateError);
                 }
 
-                // Create transaction record
-                await query(
+                // Create transaction record — ON CONFLICT DO NOTHING makes this idempotent
+                // against double-submit (double-click, retry after network hiccup): only the
+                // request that actually inserts a new row triggers enrollment/email below.
+                const transactionResult = await query(
                     `INSERT INTO transactions (
                         id, order_id, transaction_id, payment_link_id, amount, status, paid_at, webhook_data, created_at
-                    ) VALUES (gen_random_uuid(), $1, $2, $3, $4, 'success', $5, $6, NOW())`,
+                    ) VALUES (gen_random_uuid(), $1, $2, $3, $4, 'success', $5, $6, NOW())
+                    ON CONFLICT (transaction_id) DO NOTHING
+                    RETURNING id`,
                     [
                         orderId,
-                        paymentInfo.data.id || paymentInfo.data.transactionId || `TXN-${Date.now()}`,
+                        transactionId,
                         order.payment_link_id,
                         order.total_amount,
                         new Date().toISOString(),
@@ -82,11 +89,15 @@ export async function POST(request: NextRequest) {
                     ]
                 );
 
+                if (transactionResult.rows.length > 0) {
+                    await processSuccessfulPayment(order as unknown as Order);
+                }
+
                 return NextResponse.json({
                     success: true,
                     paid: true,
                     message: 'Payment verified successfully',
-                    transactionId: paymentInfo.data.id || paymentInfo.data.transactionId,
+                    transactionId,
                 });
             } else {
                 // Payment not yet completed

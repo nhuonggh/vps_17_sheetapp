@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
     User as UserIcon, Phone, Briefcase, Package, Clock,
     CalendarCheck, Bell, LogOut, Edit, X, Loader2, Save,
@@ -9,6 +10,8 @@ import {
 import { signOut } from '@/lib/auth/client-signout';
 import { useCart } from '@/context/CartContext';
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+const VALID_TABS = ['info', 'assets', 'affiliate', 'bookings', 'coupons', 'orders', 'feedback', 'notifs'];
 
 // --- INTERFACES ---
 interface Booking {
@@ -23,6 +26,14 @@ interface Coupon {
 interface AffiliateRequest {
     id: number; created_at: string; status: string; full_name: string; phone: string; scope?: string;
 }
+interface Asset {
+    product_id: number; product_name: string; thumbnail_url: string | null; slug: string;
+    type: 'course' | 'service'; acquired_at: string; status: string | null;
+}
+interface Order {
+    order_id: string; created_at: string; total_amount: number; status: string;
+    items: { product_name: string; quantity: number; price: number }[];
+}
 
 interface ProfileUser {
     id: string;
@@ -33,7 +44,9 @@ interface ProfileUser {
 export default function ProfileMobile({ user }: { user: ProfileUser | null }) {
     const { clearCart } = useCart();
     const { executeRecaptcha } = useGoogleReCaptcha();
-    const [activeTab, setActiveTab] = useState('info');
+    const searchParams = useSearchParams();
+    const initialTab = searchParams.get('tab');
+    const [activeTab, setActiveTab] = useState(initialTab && VALID_TABS.includes(initialTab) ? initialTab : 'info');
     const [showEditModal, setShowEditModal] = useState(false);
 
     // State Modal Đăng ký CTV
@@ -46,6 +59,8 @@ export default function ProfileMobile({ user }: { user: ProfileUser | null }) {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [coupons, setCoupons] = useState<Coupon[]>([]);
     const [affiliateRequest, setAffiliateRequest] = useState<AffiliateRequest | null>(null);
+    const [assets, setAssets] = useState<Asset[]>([]);
+    const [orders, setOrders] = useState<Order[]>([]);
 
     const [feedbackContent, setFeedbackContent] = useState('');
     const [isCopied, setIsCopied] = useState<string | null>(null);
@@ -111,10 +126,26 @@ export default function ProfileMobile({ user }: { user: ProfileUser | null }) {
                 if (data) setAffiliateRequest(data);
             };
 
+            // Load Assets (courses/services owned)
+            const fetchAssets = async () => {
+                const res = await fetch('/api/profile/assets');
+                const { assets: data } = await res.json();
+                if (data) setAssets(data);
+            };
+
+            // Load Orders (paid order history)
+            const fetchOrders = async () => {
+                const res = await fetch('/api/profile/orders');
+                const { orders: data } = await res.json();
+                if (data) setOrders(data);
+            };
+
             fetchBookings();
             fetchNotifications();
             fetchCoupons();
             checkAffiliate();
+            fetchAssets();
+            fetchOrders();
         };
 
         loadUserData();
@@ -309,7 +340,27 @@ export default function ProfileMobile({ user }: { user: ProfileUser | null }) {
                     </div>
                 );
             case 'assets':
-                return (
+                return assets.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-3">
+                        {assets.map(item => (
+                            <div key={`${item.type}-${item.product_id}`} className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
+                                <div className="h-20 bg-gray-100 relative">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={item.thumbnail_url || 'https://via.placeholder.com/200x100'} className="w-full h-full object-cover" alt={item.product_name} />
+                                    <span className="absolute top-1 right-1 bg-emerald-600 text-white text-[8px] px-1.5 py-0.5 rounded font-bold">{item.type === 'course' ? 'Khóa học' : 'Dịch vụ'}</span>
+                                </div>
+                                <div className="p-2">
+                                    <h4 className="text-xs font-bold text-gray-800 line-clamp-2 min-h-[32px]">{item.product_name}</h4>
+                                    {item.type === 'course' ? (
+                                        <a href={`/product/${item.slug}`} className="block text-center mt-1 py-1.5 bg-emerald-50 text-emerald-700 font-bold text-[10px] rounded">Truy cập</a>
+                                    ) : (
+                                        <span className="block text-center mt-1 py-1.5 bg-gray-50 text-gray-600 font-bold text-[10px] rounded">{item.status || 'Đang xử lý'}</span>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
                     <div className="text-center py-10 text-gray-400 text-sm">
                         <Package className="w-10 h-10 mx-auto mb-2 opacity-50" />
                         Chưa có tài sản nào. <br /> Hãy mua khóa học để bắt đầu học ngay!
@@ -456,7 +507,22 @@ export default function ProfileMobile({ user }: { user: ProfileUser | null }) {
                     </div>
                 );
             case 'orders':
-                return <div className="text-center py-8 text-gray-400 text-sm">Chưa có đơn hàng nào.</div>;
+                return orders.length > 0 ? (
+                    <div className="space-y-3">
+                        {orders.map(order => (
+                            <div key={order.order_id} className="bg-white p-4 rounded-xl border-l-4 border-emerald-500 shadow-sm">
+                                <div className="flex justify-between mb-2">
+                                    <span className="font-bold text-xs text-gray-800">{order.order_id}</span>
+                                    <span className="text-[10px] text-gray-500">{new Date(order.created_at).toLocaleDateString('vi-VN')}</span>
+                                </div>
+                                <p className="text-xs text-gray-600 mb-1">{order.items.map(i => i.product_name).join(', ')}</p>
+                                <p className="text-sm font-bold text-emerald-600">{order.total_amount.toLocaleString('vi-VN')}đ</p>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-8 text-gray-400 text-sm">Chưa có đơn hàng nào.</div>
+                );
             default: return null;
         }
     };

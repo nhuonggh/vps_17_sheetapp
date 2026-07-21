@@ -57,7 +57,7 @@ export default function BookingModal({ isOpen, onClose }: BookingModalProps) {
         return;
       }
 
-      // 3. CAPTCHA passed - Gửi dữ liệu lên API
+      // 3. CAPTCHA passed - Gửi dữ liệu lên API (kèm token để server tự verify lại)
       const bookingRes = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -65,6 +65,7 @@ export default function BookingModal({ isOpen, onClose }: BookingModalProps) {
           fullName: formData.fullName,
           phone: formData.phone,
           message: formData.message,
+          captchaToken,
         }),
       });
 

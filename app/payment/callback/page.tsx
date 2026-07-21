@@ -256,24 +256,6 @@ function PaymentCallbackContent() {
                             ← Về trang chủ
                         </a>
                     </div>
-
-                    {/* Debug Info (for testing) */}
-                    <div className="mt-8 p-4 bg-gray-50 rounded-lg text-left">
-                        <details className="text-sm">
-                            <summary className="font-semibold text-gray-700 cursor-pointer">
-                                🔧 Debug Information (Testing)
-                            </summary>
-                            <div className="mt-3 space-y-2 text-gray-600">
-                                <p><strong>URL Params:</strong></p>
-                                <pre className="bg-white p-2 rounded text-xs overflow-auto">
-                                    {typeof window !== 'undefined' ? window.location.search : 'Loading...'}
-                                </pre>
-                                <p className="text-xs text-gray-500 mt-2">
-                                    💡 Check terminal logs để xem webhook status
-                                </p>
-                            </div>
-                        </details>
-                    </div>
                 </div>
             </div>
         </div>

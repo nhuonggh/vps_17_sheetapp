@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifyWebhookSignature } from '@/lib/payos';
-import { enrollUserInProducts, sendEnrollmentEmail } from '@/lib/auto-enrollment';
+import { processSuccessfulPayment, type Order } from '@/lib/auto-enrollment';
 
 /**
  * GET /api/payment/webhook
@@ -41,19 +41,11 @@ export async function POST(request: NextRequest) {
         //     success: true,
         //     message: 'Webhook endpoint active'
         // });
-        // Extract payment data - handle both formats
+        // Extract just enough to detect test webhooks — everything else is read from the
+        // verified `data` below so an unverified payload can't smuggle tampered fields in.
         // PayOS test webhook may send data directly or in data object
         const paymentData = webhookData.data || webhookData;
-        const {
-            orderCode,
-            amount,
-            description,
-            accountNumber,
-            reference,
-            transactionDateTime,
-            code, // Payment status code
-            desc, // Payment status description
-        } = paymentData;
+        const { orderCode } = paymentData;
 
         // Handle test webhook from PayOS (when configuring webhook URL)
         // PayOS sends test with orderCode = 999999 or just empty data
@@ -74,11 +66,12 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        // Verify webhook signature (skip for test webhooks)
-        const signature = request.headers.get('x-payos-signature') || '';
-        const isValid = await verifyWebhookSignature(webhookData, signature);
+        // Verify webhook payload (signature lives in the body, PayOS signs {data, signature}).
+        // Use the verified `data` for everything below instead of the pre-verify `paymentData`
+        // so a signature bypass can't smuggle tampered fields through.
+        const { valid: isValid, data: verifiedData } = await verifyWebhookSignature(webhookData);
 
-        if (!isValid) {
+        if (!isValid || !verifiedData) {
             console.error('❌ Invalid webhook signature');
             return NextResponse.json(
                 { error: 'Invalid signature' },
@@ -86,16 +79,25 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        console.log(`🔍 Processing payment for order: ${orderCode}`);
+        const {
+            orderCode: verifiedOrderCode,
+            amount: verifiedAmount,
+            accountNumber: verifiedAccountNumber,
+            reference: verifiedReference,
+            transactionDateTime: verifiedTransactionDateTime,
+            code: verifiedCode,
+        } = verifiedData;
 
-        // Find order by orderCode
+        console.log(`🔍 Processing payment for order: ${verifiedOrderCode}`);
+
+        // Find order by exact payos_order_code match (not a fuzzy substring match on order_id)
         const ordersResult = await query(
-            'SELECT * FROM orders WHERE order_id ILIKE $1 LIMIT 1',
-            [`%${orderCode}%`]
+            'SELECT * FROM orders WHERE payos_order_code = $1 LIMIT 1',
+            [Number(verifiedOrderCode)]
         );
 
         if (ordersResult.rows.length === 0) {
-            console.error('Order not found:', orderCode);
+            console.error('Order not found:', verifiedOrderCode);
             return NextResponse.json(
                 { error: 'Order not found' },
                 { status: 404 }
@@ -104,35 +106,23 @@ export async function POST(request: NextRequest) {
 
         const order = ordersResult.rows[0];
 
-        // Validate amount matches
-        if (order.total_amount !== amount) {
-            console.error(`Amount mismatch: expected ${order.total_amount}, got ${amount}`);
+        // Validate amount matches — total_amount is numeric and comes back as a string from pg
+        if (Number(order.total_amount) !== Number(verifiedAmount)) {
+            console.error(`Amount mismatch: expected ${order.total_amount}, got ${verifiedAmount}`);
             return NextResponse.json(
                 { error: 'Amount mismatch' },
                 { status: 400 }
             );
         }
 
-        // Check if webhook already processed (idempotency)
-        const existingTransactionResult = await query(
-            'SELECT id FROM transactions WHERE transaction_id = $1 LIMIT 1',
-            [reference]
-        );
-        const existingTransaction = existingTransactionResult.rows[0];
-
-        if (existingTransaction) {
-            console.log('Webhook already processed:', reference);
-            return NextResponse.json({ success: true, message: 'Already processed' });
-        }
-
         // Determine payment status
         let orderStatus: string;
         let transactionStatus: string;
 
-        if (code === '00' || code === 'PAID') {
+        if (verifiedCode === '00' || verifiedCode === 'PAID') {
             orderStatus = 'paid';
             transactionStatus = 'success';
-        } else if (code === 'CANCELLED') {
+        } else if (verifiedCode === 'CANCELLED') {
             orderStatus = 'cancelled';
             transactionStatus = 'cancelled';
         } else {
@@ -140,11 +130,15 @@ export async function POST(request: NextRequest) {
             transactionStatus = 'pending';
         }
 
-        // Update order status
+        // Update order status — guard against a stale/reordered webhook downgrading an
+        // order that's already been marked paid (e.g. 'pending' arriving after 'paid').
+        let updateResult;
         try {
-            await query(
-                `UPDATE orders SET status = $1, paid_at = $2, transaction_id = $3 WHERE order_id = $4`,
-                [orderStatus, orderStatus === 'paid' ? new Date().toISOString() : null, reference, order.order_id]
+            updateResult = await query(
+                `UPDATE orders SET status = $1, paid_at = $2, transaction_id = $3
+                 WHERE order_id = $4 AND (status != 'paid' OR $1 = 'paid')
+                 RETURNING status`,
+                [orderStatus, orderStatus === 'paid' ? new Date().toISOString() : null, verifiedReference, order.order_id]
             );
         } catch (updateError) {
             console.error('Error updating order:', updateError);
@@ -154,27 +148,38 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Create transaction record
+        if (updateResult.rows.length === 0) {
+            console.log(`ℹ️ Order ${order.order_id} already paid — ignoring downgrade to ${orderStatus}`);
+            return NextResponse.json({ success: true, message: 'Order already paid, ignoring stale update' });
+        }
+
+        // Create transaction record — ON CONFLICT DO NOTHING makes this idempotent for
+        // PayOS webhook retries; only the request that actually inserts a row proceeds
+        // to enrollment/email below.
+        let transactionInserted = false;
         try {
-            await query(
+            const transactionResult = await query(
                 `INSERT INTO transactions (
                     id, order_id, transaction_id, amount, currency, status,
                     payment_method, bank_code, account_number, paid_at, webhook_data, created_at
                 ) VALUES (
                     gen_random_uuid(), $1, $2, $3, 'VND', $4,
                     'BANK_TRANSFER', $5, $6, $7, $8, NOW()
-                )`,
+                )
+                ON CONFLICT (transaction_id) DO NOTHING
+                RETURNING id`,
                 [
                     order.order_id,
-                    reference,
-                    amount,
+                    verifiedReference,
+                    verifiedAmount,
                     transactionStatus,
-                    accountNumber,
-                    accountNumber,
-                    orderStatus === 'paid' ? transactionDateTime : null,
+                    verifiedAccountNumber,
+                    verifiedAccountNumber,
+                    orderStatus === 'paid' ? verifiedTransactionDateTime : null,
                     JSON.stringify(webhookData),
                 ]
             );
+            transactionInserted = transactionResult.rows.length > 0;
         } catch (transactionError) {
             console.error('Error creating transaction:', transactionError);
             // Don't return error, order is already updated
@@ -182,77 +187,14 @@ export async function POST(request: NextRequest) {
 
         console.log(`✅ Order ${order.order_id} updated to ${orderStatus}`);
 
+        if (!transactionInserted) {
+            console.log('Webhook already processed:', verifiedReference);
+            return NextResponse.json({ success: true, message: 'Already processed' });
+        }
+
         // Auto-enroll user if payment successful
         if (orderStatus === 'paid') {
-            try {
-                console.log(`🎓 Initiating auto-enrollment for order ${order.order_id}`);
-                await enrollUserInProducts(order);
-                console.log(`✅ Auto-enrollment completed`);
-
-                // Send email notification with order details
-                try {
-                    const orderItemsResult = await query<{ product_id: number; quantity: number; price_at_purchase: number }>(
-                        'SELECT product_id, quantity, price_at_purchase FROM order_items WHERE order_id = $1',
-                        [order.id]
-                    );
-                    const orderItems = orderItemsResult.rows;
-
-                    if (orderItems && orderItems.length > 0) {
-                        // Get product names
-                        const productIds = orderItems.map(item => item.product_id);
-                        const productsResult = await query<{ id: number; name: string }>(
-                            'SELECT id, name FROM products WHERE id = ANY($1)',
-                            [productIds]
-                        );
-                        const products = productsResult.rows;
-
-                        // Map product names to order items
-                        const enrichedItems = orderItems.map(item => ({
-                            product_id: item.product_id,
-                            product_name: products?.find(p => p.id === item.product_id)?.name || 'Unknown Product',
-                            quantity: item.quantity,
-                            price: item.price_at_purchase
-                        }));
-
-                        await sendEnrollmentEmail(
-                            order.customer_email,
-                            enrichedItems,
-                            {
-                                order_id: order.order_id || 'N/A',
-                                total_amount: amount
-                            }
-                        );
-                        console.log(`📧 Email notification queued for ${order.customer_email}`);
-                    }
-                } catch (emailError) {
-                    console.error('⚠️ Email send failed (non-critical):', emailError);
-                    // Don't fail the webhook for email errors
-                }
-
-            } catch (enrollError: any) {
-                console.error('❌ Auto-enrollment failed:', enrollError);
-
-                // Log to failed_enrollments table for retry
-                try {
-                    await query(
-                        `INSERT INTO failed_enrollments (
-                            order_id, customer_email, error_message, error_details, retry_count, created_at
-                        ) VALUES ($1, $2, $3, $4, 0, NOW())`,
-                        [
-                            order.order_id,
-                            order.customer_email,
-                            enrollError?.message || 'Unknown error',
-                            JSON.stringify({ stack: enrollError?.stack, code: enrollError?.code }),
-                        ]
-                    );
-                    console.log(`📝 Logged to failed_enrollments for manual review`);
-                } catch (logError) {
-                    console.error('Failed to log enrollment error:', logError);
-                }
-
-                // Don't fail the webhook - payment is already processed
-                // This can be retried manually or via cron job
-            }
+            await processSuccessfulPayment(order as unknown as Order);
         }
 
         // Return 200 OK to PayOS

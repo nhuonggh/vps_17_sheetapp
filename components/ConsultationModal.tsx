@@ -41,7 +41,7 @@ export default function ConsultationModal({ isOpen, onClose }: { isOpen: boolean
         return;
       }
 
-      // CAPTCHA passed, proceed with form submission
+      // CAPTCHA passed, proceed with form submission (kèm token để server tự verify lại)
       const leadRes = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -49,6 +49,7 @@ export default function ConsultationModal({ isOpen, onClose }: { isOpen: boolean
           fullName: formData.fullName,
           phone: formData.phone,
           message: formData.message,
+          captchaToken,
         }),
       });
 

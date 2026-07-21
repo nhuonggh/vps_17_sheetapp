@@ -90,12 +90,20 @@ export const formRateLimit = redis
 
 /**
  * Helper function to get client IP from request
+ *
+ * Deploy topology is VPS Caddy -> Node app directly (see setup-project skill's
+ * caddy-site.caddy: bare `reverse_proxy`, no CDN in front). Caddy's reverse_proxy
+ * APPENDS the real connection IP to the end of any X-Forwarded-For it forwards —
+ * it never overwrites what's already there. So the FIRST entry can be spoofed by
+ * the client itself; the LAST entry is always the one Caddy added and is trustworthy.
  */
 export function getClientIp(request: Request): string {
-  // Try to get real IP from headers (Vercel, Cloudflare, etc.)
   const forwardedFor = request.headers.get('x-forwarded-for');
   if (forwardedFor) {
-    return forwardedFor.split(',')[0].trim();
+    const parts = forwardedFor.split(',').map((part) => part.trim()).filter(Boolean);
+    if (parts.length > 0) {
+      return parts[parts.length - 1];
+    }
   }
 
   const realIp = request.headers.get('x-real-ip');

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useCurrentUser } from '@/lib/auth/use-current-user';
 import ProfileMobile from '@/components/profile/ProfileMobile';
 import ProfileDesktop from '@/components/profile/ProfileDesktop';
@@ -35,14 +35,18 @@ export default function ProfilePage() {
     <main className="min-h-screen bg-gray-50">
       {/* GIAO DIỆN MOBILE (Chỉ hiện ở màn hình nhỏ < md) */}
       <div className="block md:hidden">
-        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        <ProfileMobile user={compatUser as any} />
+        <Suspense fallback={null}>
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          <ProfileMobile user={compatUser as any} />
+        </Suspense>
       </div>
 
       {/* GIAO DIỆN DESKTOP (Chỉ hiện ở màn hình lớn >= md) */}
       <div className="hidden md:block pt-20">
-        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        <ProfileDesktop user={compatUser as any} />
+        <Suspense fallback={null}>
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          <ProfileDesktop user={compatUser as any} />
+        </Suspense>
       </div>
     </main>
   );

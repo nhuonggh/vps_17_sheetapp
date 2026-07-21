@@ -1,81 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyCaptchaToken } from '@/lib/captcha';
 
 /**
- * Server-side CAPTCHA verification endpoint
- * Verifies reCAPTCHA v3 token with Google API
+ * Server-side CAPTCHA verification endpoint (used by clients for early UX feedback
+ * before submitting a form). The actual write endpoints — /api/bookings, /api/leads —
+ * verify the token again themselves via lib/captcha.ts; they don't trust this route
+ * having been called.
  */
 export async function POST(request: NextRequest) {
     try {
-        const body = await request.json();
-        const { token } = body;
+        const { token } = await request.json();
+        const result = await verifyCaptchaToken(token);
 
-        if (!token) {
-            return NextResponse.json(
-                { error: 'CAPTCHA token is required' },
-                { status: 400 }
-            );
-        }
-
-        // Verify with Google reCAPTCHA API
-        const secretKey = process.env.RECAPTCHA_SECRET_KEY;
-
-        if (!secretKey) {
-            console.error('RECAPTCHA_SECRET_KEY not configured');
-            // In production, fail closed. In development, allow through with warning.
-            if (process.env.NODE_ENV === 'production') {
+        if (!result.success) {
+            if (result.reason === 'missing_token') {
+                return NextResponse.json({ error: 'CAPTCHA token is required' }, { status: 400 });
+            }
+            if (result.reason === 'not_configured') {
+                return NextResponse.json({ error: 'CAPTCHA verification not configured' }, { status: 500 });
+            }
+            if (result.reason === 'low_score') {
                 return NextResponse.json(
-                    { error: 'CAPTCHA verification not configured' },
-                    { status: 500 }
+                    { error: 'Bot detected! Please try again.', score: result.score },
+                    { status: 403 }
                 );
             }
-            // Development: allow through
-            return NextResponse.json({ success: true, score: 1.0, development: true });
-        }
-
-        const verifyUrl = 'https://www.google.com/recaptcha/api/siteverify';
-        const verifyResponse = await fetch(verifyUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `secret=${secretKey}&response=${token}`,
-        });
-
-        const verifyData = await verifyResponse.json();
-
-        // reCAPTCHA v3 returns a score from 0.0 to 1.0
-        // 1.0 is very likely a good interaction, 0.0 is very likely a bot
-        // We set threshold at 0.5 for moderate security
-        const scoreThreshold = 0.5;
-
-        if (!verifyData.success) {
             return NextResponse.json(
-                {
-                    error: 'CAPTCHA verification failed',
-                    errorCodes: verifyData['error-codes'],
-                },
+                { error: 'CAPTCHA verification failed', errorCodes: result.errorCodes },
                 { status: 403 }
             );
         }
 
-        if (verifyData.score < scoreThreshold) {
-            return NextResponse.json(
-                {
-                    error: 'Bot detected! Please try again.',
-                    score: verifyData.score,
-                    threshold: scoreThreshold,
-                },
-                { status: 403 }
-            );
-        }
-
-        // Success
-        return NextResponse.json({
-            success: true,
-            score: verifyData.score,
-            action: verifyData.action,
-            timestamp: verifyData.challenge_ts,
-        });
+        return NextResponse.json({ success: true, score: result.score, action: result.action });
 
     } catch (error) {
         console.error('CAPTCHA verification error:', error);

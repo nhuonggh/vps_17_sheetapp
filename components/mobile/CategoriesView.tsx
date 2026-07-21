@@ -8,6 +8,7 @@ import { useCart } from '@/context/CartContext';
 import { useCurrentUser } from '@/lib/auth/use-current-user';
 import { signOut } from '@/lib/auth/client-signout';
 import { useSearchParams } from 'next/navigation';
+import { isMatchSubTab } from '@/lib/product-filters';
 
 // --- TYPES ---
 type ParentTabType = 'all' | 'course' | 'service';
@@ -77,21 +78,6 @@ const MENU_GROUPS = [
       ]
     }
 ];
-
-// --- HELPER LOGIC ---
-const isMatchSubTab = (p: Product, subTabId: string) => {
-    const catSlug = p.categories?.slug || '';
-    const s = subTabId.toLowerCase();
-    if (s === 'online') return catSlug.includes('online');
-    if (s === 'zoom') return catSlug.includes('zoom');
-    if (s === 'appsheet') return catSlug.includes('appsheet') || catSlug.includes('nocode');
-    if (s === 'automation') return catSlug.includes('automation') || catSlug.includes('n8n');
-    if (s === 'zalo') return catSlug.includes('zalo');
-    if (s === 'web') return catSlug.includes('web');
-    if (s === 'pc') return catSlug.includes('pc') || catSlug.includes('software');
-    if (s === 'automation_service') return catSlug.includes('automation');
-    return true;
-};
 
 // --- SUB COMPONENTS ---
 
