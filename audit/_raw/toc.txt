@@ -1,0 +1,401 @@
+;
+; Archive created at 2026-07-21 01:22:49
+;     dbname: sheetapp_db
+;     TOC Entries: 390
+;     Compression: gzip
+;     Dump Version: 1.14-0
+;     Format: CUSTOM
+;     Integer: 4 bytes
+;     Offset: 8 bytes
+;     Dumped from database version: 15.18 (Debian 15.18-1.pgdg13+1)
+;     Dumped by pg_dump version: 15.17
+;
+;
+; Selected TOC Entries:
+;
+3; 3079 16401 EXTENSION - pgcrypto 
+4026; 0 0 COMMENT - EXTENSION pgcrypto 
+2; 3079 16390 EXTENSION - uuid-ossp 
+4027; 0 0 COMMENT - EXTENSION "uuid-ossp" 
+949; 1247 16439 TYPE public order_status sheetapp_user
+952; 1247 16448 TYPE public user_role sheetapp_user
+323; 1255 16453 FUNCTION public find_user_by_email(text) sheetapp_user
+4028; 0 0 COMMENT public FUNCTION find_user_by_email(p_email text) sheetapp_user
+335; 1255 16454 FUNCTION public handle_new_user() sheetapp_user
+336; 1255 16455 FUNCTION public update_service_activations_updated_at() sheetapp_user
+337; 1255 16456 FUNCTION public update_updated_at_column() sheetapp_user
+216; 1259 16457 TABLE public affiliate_requests sheetapp_user
+217; 1259 16464 SEQUENCE public affiliate_requests_id_seq sheetapp_user
+218; 1259 16465 TABLE public bookings sheetapp_user
+219; 1259 16472 SEQUENCE public bookings_id_seq sheetapp_user
+220; 1259 16473 TABLE public categories sheetapp_user
+221; 1259 16479 SEQUENCE public categories_id_seq sheetapp_user
+222; 1259 16480 TABLE public chapters sheetapp_user
+223; 1259 16486 SEQUENCE public chapters_id_seq sheetapp_user
+224; 1259 16487 TABLE public comments sheetapp_user
+225; 1259 16493 SEQUENCE public comments_id_seq sheetapp_user
+226; 1259 16494 TABLE public coupons sheetapp_user
+227; 1259 16501 SEQUENCE public coupons_id_seq sheetapp_user
+228; 1259 16502 TABLE public enrollments sheetapp_user
+4029; 0 0 COMMENT public TABLE enrollments sheetapp_user
+4030; 0 0 COMMENT public COLUMN enrollments.progress sheetapp_user
+229; 1259 16509 SEQUENCE public enrollments_id_seq sheetapp_user
+4031; 0 0 SEQUENCE OWNED BY public enrollments_id_seq sheetapp_user
+230; 1259 16510 TABLE public failed_enrollments sheetapp_user
+4032; 0 0 COMMENT public TABLE failed_enrollments sheetapp_user
+231; 1259 16517 SEQUENCE public failed_enrollments_id_seq sheetapp_user
+4033; 0 0 SEQUENCE OWNED BY public failed_enrollments_id_seq sheetapp_user
+232; 1259 16518 TABLE public feedbacks sheetapp_user
+233; 1259 16525 SEQUENCE public feedbacks_id_seq sheetapp_user
+234; 1259 16526 TABLE public filters sheetapp_user
+235; 1259 16533 SEQUENCE public filters_id_seq sheetapp_user
+236; 1259 16534 TABLE public instructors sheetapp_user
+237; 1259 16540 SEQUENCE public instructors_id_seq sheetapp_user
+238; 1259 16541 TABLE public leads sheetapp_user
+239; 1259 16548 SEQUENCE public leads_id_seq sheetapp_user
+240; 1259 16549 TABLE public lessons sheetapp_user
+241; 1259 16556 SEQUENCE public lessons_id_seq sheetapp_user
+242; 1259 16557 TABLE public notifications sheetapp_user
+243; 1259 16565 SEQUENCE public notifications_id_seq sheetapp_user
+244; 1259 16566 TABLE public order_items sheetapp_user
+245; 1259 16573 SEQUENCE public order_items_id_seq sheetapp_user
+246; 1259 16574 TABLE public orders sheetapp_user
+4034; 0 0 COMMENT public COLUMN orders.paid_at sheetapp_user
+4035; 0 0 COMMENT public COLUMN orders.payment_link_id sheetapp_user
+4036; 0 0 COMMENT public COLUMN orders.payment_url sheetapp_user
+247; 1259 16583 TABLE public partners sheetapp_user
+248; 1259 16591 SEQUENCE public partners_id_seq sheetapp_user
+249; 1259 16592 TABLE public post_categories sheetapp_user
+250; 1259 16598 SEQUENCE public post_categories_id_seq sheetapp_user
+251; 1259 16599 TABLE public posts sheetapp_user
+252; 1259 16608 SEQUENCE public posts_id_seq sheetapp_user
+253; 1259 16609 TABLE public product_benefits sheetapp_user
+4037; 0 0 COMMENT public TABLE product_benefits sheetapp_user
+254; 1259 16617 SEQUENCE public product_benefits_id_seq sheetapp_user
+4038; 0 0 SEQUENCE OWNED BY public product_benefits_id_seq sheetapp_user
+255; 1259 16618 TABLE public product_deployment_steps sheetapp_user
+4039; 0 0 COMMENT public TABLE product_deployment_steps sheetapp_user
+256; 1259 16625 SEQUENCE public product_deployment_steps_id_seq sheetapp_user
+4040; 0 0 SEQUENCE OWNED BY public product_deployment_steps_id_seq sheetapp_user
+257; 1259 16626 TABLE public product_experts sheetapp_user
+4041; 0 0 COMMENT public TABLE product_experts sheetapp_user
+258; 1259 16634 SEQUENCE public product_experts_id_seq sheetapp_user
+4042; 0 0 SEQUENCE OWNED BY public product_experts_id_seq sheetapp_user
+259; 1259 16635 TABLE public product_features sheetapp_user
+4043; 0 0 COMMENT public TABLE product_features sheetapp_user
+260; 1259 16643 SEQUENCE public product_features_id_seq sheetapp_user
+4044; 0 0 SEQUENCE OWNED BY public product_features_id_seq sheetapp_user
+261; 1259 16644 TABLE public product_pricing_tiers sheetapp_user
+4045; 0 0 COMMENT public TABLE product_pricing_tiers sheetapp_user
+4046; 0 0 COMMENT public COLUMN product_pricing_tiers.is_recommended sheetapp_user
+4047; 0 0 COMMENT public COLUMN product_pricing_tiers.cta_variant sheetapp_user
+262; 1259 16657 SEQUENCE public product_pricing_tiers_id_seq sheetapp_user
+4048; 0 0 SEQUENCE OWNED BY public product_pricing_tiers_id_seq sheetapp_user
+263; 1259 16658 TABLE public product_requirements sheetapp_user
+4049; 0 0 COMMENT public TABLE product_requirements sheetapp_user
+264; 1259 16667 SEQUENCE public product_requirements_id_seq sheetapp_user
+4050; 0 0 SEQUENCE OWNED BY public product_requirements_id_seq sheetapp_user
+265; 1259 16668 TABLE public products sheetapp_user
+4051; 0 0 COMMENT public COLUMN products.activated sheetapp_user
+4052; 0 0 COMMENT public COLUMN products.show_on_homepage sheetapp_user
+4053; 0 0 COMMENT public COLUMN products.has_pricing_tiers sheetapp_user
+266; 1259 16682 SEQUENCE public products_id_seq sheetapp_user
+267; 1259 16683 TABLE public profiles sheetapp_user
+4054; 0 0 COMMENT public COLUMN profiles.phone sheetapp_user
+4055; 0 0 COMMENT public COLUMN profiles.created_via sheetapp_user
+268; 1259 16692 TABLE public service_activations sheetapp_user
+4056; 0 0 COMMENT public TABLE service_activations sheetapp_user
+4057; 0 0 COMMENT public COLUMN service_activations.status sheetapp_user
+4058; 0 0 COMMENT public COLUMN service_activations.assigned_to sheetapp_user
+4059; 0 0 COMMENT public COLUMN service_activations.notes sheetapp_user
+4060; 0 0 COMMENT public COLUMN service_activations.customer_notes sheetapp_user
+269; 1259 16700 SEQUENCE public service_activations_id_seq sheetapp_user
+4061; 0 0 SEQUENCE OWNED BY public service_activations_id_seq sheetapp_user
+270; 1259 16701 TABLE public service_updates sheetapp_user
+4062; 0 0 COMMENT public TABLE service_updates sheetapp_user
+4063; 0 0 COMMENT public COLUMN service_updates.update_type sheetapp_user
+271; 1259 16707 SEQUENCE public service_updates_id_seq sheetapp_user
+4064; 0 0 SEQUENCE OWNED BY public service_updates_id_seq sheetapp_user
+272; 1259 16708 TABLE public testimonials sheetapp_user
+273; 1259 16716 SEQUENCE public testimonials_id_seq sheetapp_user
+274; 1259 16717 TABLE public tier_feature_values sheetapp_user
+4065; 0 0 COMMENT public TABLE tier_feature_values sheetapp_user
+4066; 0 0 COMMENT public COLUMN tier_feature_values.value_type sheetapp_user
+275; 1259 16725 SEQUENCE public tier_feature_values_id_seq sheetapp_user
+4067; 0 0 SEQUENCE OWNED BY public tier_feature_values_id_seq sheetapp_user
+276; 1259 16726 TABLE public transactions sheetapp_user
+4068; 0 0 COMMENT public TABLE transactions sheetapp_user
+3482; 2604 16735 DEFAULT public enrollments id sheetapp_user
+3485; 2604 16736 DEFAULT public failed_enrollments id sheetapp_user
+3514; 2604 16737 DEFAULT public product_benefits id sheetapp_user
+3518; 2604 16738 DEFAULT public product_deployment_steps id sheetapp_user
+3521; 2604 16739 DEFAULT public product_experts id sheetapp_user
+3525; 2604 16740 DEFAULT public product_features id sheetapp_user
+3529; 2604 16741 DEFAULT public product_pricing_tiers id sheetapp_user
+3538; 2604 16742 DEFAULT public product_requirements id sheetapp_user
+3556; 2604 16743 DEFAULT public service_activations id sheetapp_user
+3560; 2604 16744 DEFAULT public service_updates id sheetapp_user
+3565; 2604 16745 DEFAULT public tier_feature_values id sheetapp_user
+3959; 0 16457 TABLE DATA public affiliate_requests sheetapp_user
+3961; 0 16465 TABLE DATA public bookings sheetapp_user
+3963; 0 16473 TABLE DATA public categories sheetapp_user
+3965; 0 16480 TABLE DATA public chapters sheetapp_user
+3967; 0 16487 TABLE DATA public comments sheetapp_user
+3969; 0 16494 TABLE DATA public coupons sheetapp_user
+3971; 0 16502 TABLE DATA public enrollments sheetapp_user
+3973; 0 16510 TABLE DATA public failed_enrollments sheetapp_user
+3975; 0 16518 TABLE DATA public feedbacks sheetapp_user
+3977; 0 16526 TABLE DATA public filters sheetapp_user
+3979; 0 16534 TABLE DATA public instructors sheetapp_user
+3981; 0 16541 TABLE DATA public leads sheetapp_user
+3983; 0 16549 TABLE DATA public lessons sheetapp_user
+3985; 0 16557 TABLE DATA public notifications sheetapp_user
+3987; 0 16566 TABLE DATA public order_items sheetapp_user
+3989; 0 16574 TABLE DATA public orders sheetapp_user
+3990; 0 16583 TABLE DATA public partners sheetapp_user
+3992; 0 16592 TABLE DATA public post_categories sheetapp_user
+3994; 0 16599 TABLE DATA public posts sheetapp_user
+3996; 0 16609 TABLE DATA public product_benefits sheetapp_user
+3998; 0 16618 TABLE DATA public product_deployment_steps sheetapp_user
+4000; 0 16626 TABLE DATA public product_experts sheetapp_user
+4002; 0 16635 TABLE DATA public product_features sheetapp_user
+4004; 0 16644 TABLE DATA public product_pricing_tiers sheetapp_user
+4006; 0 16658 TABLE DATA public product_requirements sheetapp_user
+4008; 0 16668 TABLE DATA public products sheetapp_user
+4010; 0 16683 TABLE DATA public profiles sheetapp_user
+4011; 0 16692 TABLE DATA public service_activations sheetapp_user
+4013; 0 16701 TABLE DATA public service_updates sheetapp_user
+4015; 0 16708 TABLE DATA public testimonials sheetapp_user
+4017; 0 16717 TABLE DATA public tier_feature_values sheetapp_user
+4019; 0 16726 TABLE DATA public transactions sheetapp_user
+4069; 0 0 SEQUENCE SET public affiliate_requests_id_seq sheetapp_user
+4070; 0 0 SEQUENCE SET public bookings_id_seq sheetapp_user
+4071; 0 0 SEQUENCE SET public categories_id_seq sheetapp_user
+4072; 0 0 SEQUENCE SET public chapters_id_seq sheetapp_user
+4073; 0 0 SEQUENCE SET public comments_id_seq sheetapp_user
+4074; 0 0 SEQUENCE SET public coupons_id_seq sheetapp_user
+4075; 0 0 SEQUENCE SET public enrollments_id_seq sheetapp_user
+4076; 0 0 SEQUENCE SET public failed_enrollments_id_seq sheetapp_user
+4077; 0 0 SEQUENCE SET public feedbacks_id_seq sheetapp_user
+4078; 0 0 SEQUENCE SET public filters_id_seq sheetapp_user
+4079; 0 0 SEQUENCE SET public instructors_id_seq sheetapp_user
+4080; 0 0 SEQUENCE SET public leads_id_seq sheetapp_user
+4081; 0 0 SEQUENCE SET public lessons_id_seq sheetapp_user
+4082; 0 0 SEQUENCE SET public notifications_id_seq sheetapp_user
+4083; 0 0 SEQUENCE SET public order_items_id_seq sheetapp_user
+4084; 0 0 SEQUENCE SET public partners_id_seq sheetapp_user
+4085; 0 0 SEQUENCE SET public post_categories_id_seq sheetapp_user
+4086; 0 0 SEQUENCE SET public posts_id_seq sheetapp_user
+4087; 0 0 SEQUENCE SET public product_benefits_id_seq sheetapp_user
+4088; 0 0 SEQUENCE SET public product_deployment_steps_id_seq sheetapp_user
+4089; 0 0 SEQUENCE SET public product_experts_id_seq sheetapp_user
+4090; 0 0 SEQUENCE SET public product_features_id_seq sheetapp_user
+4091; 0 0 SEQUENCE SET public product_pricing_tiers_id_seq sheetapp_user
+4092; 0 0 SEQUENCE SET public product_requirements_id_seq sheetapp_user
+4093; 0 0 SEQUENCE SET public products_id_seq sheetapp_user
+4094; 0 0 SEQUENCE SET public service_activations_id_seq sheetapp_user
+4095; 0 0 SEQUENCE SET public service_updates_id_seq sheetapp_user
+4096; 0 0 SEQUENCE SET public testimonials_id_seq sheetapp_user
+4097; 0 0 SEQUENCE SET public tier_feature_values_id_seq sheetapp_user
+3574; 2606 16747 CONSTRAINT public affiliate_requests affiliate_requests_pkey sheetapp_user
+3576; 2606 16749 CONSTRAINT public bookings bookings_pkey sheetapp_user
+3578; 2606 16751 CONSTRAINT public categories categories_pkey sheetapp_user
+3580; 2606 16753 CONSTRAINT public categories categories_slug_key sheetapp_user
+3582; 2606 16755 CONSTRAINT public chapters chapters_pkey sheetapp_user
+3584; 2606 16757 CONSTRAINT public comments comments_pkey sheetapp_user
+3586; 2606 16759 CONSTRAINT public coupons coupons_code_key sheetapp_user
+3588; 2606 16761 CONSTRAINT public coupons coupons_pkey sheetapp_user
+3590; 2606 16763 CONSTRAINT public enrollments enrollments_pkey sheetapp_user
+3592; 2606 16765 CONSTRAINT public enrollments enrollments_user_id_product_id_key sheetapp_user
+3598; 2606 16767 CONSTRAINT public failed_enrollments failed_enrollments_pkey sheetapp_user
+3604; 2606 16769 CONSTRAINT public feedbacks feedbacks_pkey sheetapp_user
+3606; 2606 16771 CONSTRAINT public filters filters_pkey sheetapp_user
+3608; 2606 16773 CONSTRAINT public instructors instructors_pkey sheetapp_user
+3610; 2606 16775 CONSTRAINT public leads leads_pkey sheetapp_user
+3612; 2606 16777 CONSTRAINT public lessons lessons_pkey sheetapp_user
+3614; 2606 16779 CONSTRAINT public notifications notifications_pkey sheetapp_user
+3617; 2606 16781 CONSTRAINT public order_items order_items_pkey sheetapp_user
+3625; 2606 16783 CONSTRAINT public orders orders_order_id_key sheetapp_user
+3627; 2606 16785 CONSTRAINT public orders orders_pkey sheetapp_user
+3629; 2606 16787 CONSTRAINT public partners partners_pkey sheetapp_user
+3631; 2606 16789 CONSTRAINT public post_categories post_categories_pkey sheetapp_user
+3633; 2606 16791 CONSTRAINT public post_categories post_categories_slug_key sheetapp_user
+3635; 2606 16793 CONSTRAINT public posts posts_pkey sheetapp_user
+3638; 2606 16795 CONSTRAINT public product_benefits product_benefits_pkey sheetapp_user
+3641; 2606 16797 CONSTRAINT public product_deployment_steps product_deployment_steps_pkey sheetapp_user
+3643; 2606 16799 CONSTRAINT public product_deployment_steps product_deployment_steps_product_id_step_number_key sheetapp_user
+3647; 2606 16801 CONSTRAINT public product_experts product_experts_pkey sheetapp_user
+3650; 2606 16803 CONSTRAINT public product_features product_features_pkey sheetapp_user
+3654; 2606 16805 CONSTRAINT public product_pricing_tiers product_pricing_tiers_pkey sheetapp_user
+3656; 2606 16807 CONSTRAINT public product_pricing_tiers product_pricing_tiers_product_id_tier_slug_key sheetapp_user
+3660; 2606 16809 CONSTRAINT public product_requirements product_requirements_pkey sheetapp_user
+3665; 2606 16811 CONSTRAINT public products products_pkey sheetapp_user
+3667; 2606 16813 CONSTRAINT public products products_slug_key sheetapp_user
+3672; 2606 16815 CONSTRAINT public profiles profiles_pkey sheetapp_user
+3681; 2606 16817 CONSTRAINT public service_activations service_activations_pkey sheetapp_user
+3683; 2606 16819 CONSTRAINT public service_activations service_activations_user_id_product_id_key sheetapp_user
+3687; 2606 16821 CONSTRAINT public service_updates service_updates_pkey sheetapp_user
+3689; 2606 16823 CONSTRAINT public testimonials testimonials_pkey sheetapp_user
+3693; 2606 16825 CONSTRAINT public tier_feature_values tier_feature_values_pkey sheetapp_user
+3700; 2606 16827 CONSTRAINT public transactions transactions_pkey sheetapp_user
+3702; 2606 16829 CONSTRAINT public transactions transactions_transaction_id_key sheetapp_user
+3593; 1259 16830 INDEX public idx_enrollments_order_id sheetapp_user
+3594; 1259 16831 INDEX public idx_enrollments_product_id sheetapp_user
+3595; 1259 16832 INDEX public idx_enrollments_user_id sheetapp_user
+3596; 1259 16833 INDEX public idx_enrollments_user_product sheetapp_user
+3599; 1259 16834 INDEX public idx_failed_enrollments_email sheetapp_user
+3600; 1259 16835 INDEX public idx_failed_enrollments_order_id sheetapp_user
+3601; 1259 16836 INDEX public idx_failed_enrollments_resolved sheetapp_user
+3602; 1259 16837 INDEX public idx_failed_enrollments_unresolved sheetapp_user
+3615; 1259 16838 INDEX public idx_order_items_order_product sheetapp_user
+3618; 1259 16839 INDEX public idx_orders_customer_email sheetapp_user
+3619; 1259 16840 INDEX public idx_orders_order_id sheetapp_user
+3620; 1259 16841 INDEX public idx_orders_payment_link_id sheetapp_user
+3621; 1259 16842 INDEX public idx_orders_payos_order_code sheetapp_user
+3622; 1259 16843 INDEX public idx_orders_status sheetapp_user
+3623; 1259 16844 INDEX public idx_orders_transaction_id sheetapp_user
+3651; 1259 16845 INDEX public idx_pricing_tiers_product_id sheetapp_user
+3652; 1259 16846 INDEX public idx_pricing_tiers_recommended sheetapp_user
+3636; 1259 16847 INDEX public idx_product_benefits_product_id sheetapp_user
+3639; 1259 16848 INDEX public idx_product_deployment_steps_product_id sheetapp_user
+3644; 1259 16849 INDEX public idx_product_experts_primary sheetapp_user
+3645; 1259 16850 INDEX public idx_product_experts_product_id sheetapp_user
+3648; 1259 16851 INDEX public idx_product_features_product_id sheetapp_user
+3657; 1259 16852 INDEX public idx_product_requirements_category sheetapp_user
+3658; 1259 16853 INDEX public idx_product_requirements_product_id sheetapp_user
+3661; 1259 16854 INDEX public idx_products_activated sheetapp_user
+3662; 1259 16855 INDEX public idx_products_has_pricing_tiers sheetapp_user
+3663; 1259 16856 INDEX public idx_products_show_homepage sheetapp_user
+3668; 1259 16857 INDEX public idx_profiles_created_via sheetapp_user
+3669; 1259 16858 INDEX public idx_profiles_email sheetapp_user
+3670; 1259 16859 INDEX public idx_profiles_id sheetapp_user
+3673; 1259 16860 INDEX public idx_service_activations_assigned_to sheetapp_user
+3674; 1259 16861 INDEX public idx_service_activations_created_at sheetapp_user
+3675; 1259 16862 INDEX public idx_service_activations_order_id sheetapp_user
+3676; 1259 16863 INDEX public idx_service_activations_pending sheetapp_user
+3677; 1259 16864 INDEX public idx_service_activations_product_id sheetapp_user
+3678; 1259 16865 INDEX public idx_service_activations_status sheetapp_user
+3679; 1259 16866 INDEX public idx_service_activations_user_id sheetapp_user
+3684; 1259 16867 INDEX public idx_service_updates_activation_id sheetapp_user
+3685; 1259 16868 INDEX public idx_service_updates_created_by sheetapp_user
+3690; 1259 16869 INDEX public idx_tier_feature_values_category sheetapp_user
+3691; 1259 16870 INDEX public idx_tier_feature_values_tier_id sheetapp_user
+3694; 1259 16871 INDEX public idx_transactions_created_at sheetapp_user
+3695; 1259 16872 INDEX public idx_transactions_order_id sheetapp_user
+3696; 1259 16873 INDEX public idx_transactions_payos_order_code sheetapp_user
+3697; 1259 16874 INDEX public idx_transactions_status sheetapp_user
+3698; 1259 16875 INDEX public idx_transactions_transaction_id sheetapp_user
+3733; 2620 16876 TRIGGER public service_activations trigger_update_service_activations_updated_at sheetapp_user
+3731; 2620 16877 TRIGGER public product_pricing_tiers update_pricing_tiers_updated_at sheetapp_user
+3727; 2620 16878 TRIGGER public product_benefits update_product_benefits_updated_at sheetapp_user
+3728; 2620 16879 TRIGGER public product_deployment_steps update_product_deployment_steps_updated_at sheetapp_user
+3729; 2620 16880 TRIGGER public product_experts update_product_experts_updated_at sheetapp_user
+3730; 2620 16881 TRIGGER public product_features update_product_features_updated_at sheetapp_user
+3732; 2620 16882 TRIGGER public product_requirements update_product_requirements_updated_at sheetapp_user
+3703; 2606 16883 FK CONSTRAINT public chapters chapters_product_id_fkey sheetapp_user
+3704; 2606 16888 FK CONSTRAINT public comments comments_post_id_fkey sheetapp_user
+3705; 2606 16893 FK CONSTRAINT public enrollments enrollments_product_id_fkey sheetapp_user
+3706; 2606 16898 FK CONSTRAINT public enrollments enrollments_user_id_fkey sheetapp_user
+3707; 2606 16903 FK CONSTRAINT public lessons lessons_chapter_id_fkey sheetapp_user
+3708; 2606 16908 FK CONSTRAINT public order_items order_items_order_id_fkey sheetapp_user
+3709; 2606 16913 FK CONSTRAINT public order_items order_items_product_id_fkey sheetapp_user
+3710; 2606 16918 FK CONSTRAINT public orders orders_user_id_fkey sheetapp_user
+3711; 2606 16923 FK CONSTRAINT public posts posts_category_id_fkey sheetapp_user
+3712; 2606 16928 FK CONSTRAINT public product_benefits product_benefits_product_id_fkey sheetapp_user
+3713; 2606 16933 FK CONSTRAINT public product_deployment_steps product_deployment_steps_product_id_fkey sheetapp_user
+3714; 2606 16938 FK CONSTRAINT public product_experts product_experts_product_id_fkey sheetapp_user
+3715; 2606 16943 FK CONSTRAINT public product_features product_features_product_id_fkey sheetapp_user
+3716; 2606 16948 FK CONSTRAINT public product_pricing_tiers product_pricing_tiers_product_id_fkey sheetapp_user
+3717; 2606 16953 FK CONSTRAINT public product_requirements product_requirements_product_id_fkey sheetapp_user
+3718; 2606 16958 FK CONSTRAINT public products products_category_id_fkey sheetapp_user
+3719; 2606 16963 FK CONSTRAINT public products products_instructor_id_fkey sheetapp_user
+3720; 2606 16968 FK CONSTRAINT public service_activations service_activations_assigned_to_fkey sheetapp_user
+3721; 2606 16973 FK CONSTRAINT public service_activations service_activations_product_id_fkey sheetapp_user
+3722; 2606 16978 FK CONSTRAINT public service_activations service_activations_user_id_fkey sheetapp_user
+3723; 2606 16983 FK CONSTRAINT public service_updates service_updates_created_by_fkey sheetapp_user
+3724; 2606 16988 FK CONSTRAINT public service_updates service_updates_service_activation_id_fkey sheetapp_user
+3725; 2606 16993 FK CONSTRAINT public tier_feature_values tier_feature_values_tier_id_fkey sheetapp_user
+3726; 2606 16998 FK CONSTRAINT public transactions transactions_order_id_fkey sheetapp_user
+3908; 3256 17003 POLICY public leads Cho phép ai cũng được gửi form sheetapp_user
+3909; 3256 17004 POLICY public leads Chỉ Admin xem được leads sheetapp_user
+3910; 3256 17005 POLICY public categories Public Read Categories sheetapp_user
+3911; 3256 17006 POLICY public chapters Public Read Chapters sheetapp_user
+3912; 3256 17007 POLICY public filters Public Read Filters sheetapp_user
+3913; 3256 17008 POLICY public instructors Public Read Instructors sheetapp_user
+3914; 3256 17009 POLICY public lessons Public Read Lessons sheetapp_user
+3915; 3256 17010 POLICY public partners Public Read Partners sheetapp_user
+3916; 3256 17011 POLICY public post_categories Public Read Post Categories sheetapp_user
+3917; 3256 17012 POLICY public posts Public Read Posts sheetapp_user
+3918; 3256 17013 POLICY public products Public Read Products sheetapp_user
+3919; 3256 17014 POLICY public testimonials Public Read Testimonials sheetapp_user
+3920; 3256 17015 POLICY public order_items Public can insert order items sheetapp_user
+3921; 3256 17016 POLICY public orders Public can insert orders sheetapp_user
+3922; 3256 17017 POLICY public partners Public can view active partners sheetapp_user
+3923; 3256 17018 POLICY public products Public can view active products sheetapp_user
+3924; 3256 17019 POLICY public testimonials Public can view active testimonials sheetapp_user
+3925; 3256 17020 POLICY public categories Public can view categories sheetapp_user
+3926; 3256 17021 POLICY public chapters Public can view chapters sheetapp_user
+3927; 3256 17022 POLICY public product_deployment_steps Public can view deployment steps sheetapp_user
+3928; 3256 17023 POLICY public instructors Public can view instructors sheetapp_user
+3929; 3256 17024 POLICY public lessons Public can view lessons sheetapp_user
+3930; 3256 17025 POLICY public post_categories Public can view post categories sheetapp_user
+3931; 3256 17026 POLICY public product_pricing_tiers Public can view pricing tiers sheetapp_user
+3932; 3256 17027 POLICY public product_benefits Public can view product benefits sheetapp_user
+3933; 3256 17028 POLICY public product_experts Public can view product experts sheetapp_user
+3934; 3256 17029 POLICY public product_features Public can view product features sheetapp_user
+3935; 3256 17030 POLICY public product_requirements Public can view product requirements sheetapp_user
+3936; 3256 17031 POLICY public posts Public can view published posts sheetapp_user
+3937; 3256 17032 POLICY public tier_feature_values Public can view tier features sheetapp_user
+3938; 3256 17033 POLICY public leads Public insert leads sheetapp_user
+3939; 3256 17034 POLICY public partners Public partners are viewable by everyone sheetapp_user
+3940; 3256 17035 POLICY public posts Public posts are viewable by everyone sheetapp_user
+3941; 3256 17036 POLICY public products Public products are viewable by everyone sheetapp_user
+3942; 3256 17037 POLICY public testimonials Public testimonials are viewable by everyone sheetapp_user
+3943; 3256 17038 POLICY public coupons Read active coupons sheetapp_user
+3944; 3256 17039 POLICY public transactions Service role can manage transactions sheetapp_user
+3945; 3256 17040 POLICY public categories Service role manages categories sheetapp_user
+3946; 3256 17041 POLICY public chapters Service role manages chapters sheetapp_user
+3947; 3256 17042 POLICY public enrollments Service role manages enrollments sheetapp_user
+3948; 3256 17043 POLICY public failed_enrollments Service role manages failed enrollments sheetapp_user
+3949; 3256 17044 POLICY public instructors Service role manages instructors sheetapp_user
+3950; 3256 17045 POLICY public lessons Service role manages lessons sheetapp_user
+3951; 3256 17046 POLICY public partners Service role manages partners sheetapp_user
+3952; 3256 17047 POLICY public post_categories Service role manages post categories sheetapp_user
+3953; 3256 17048 POLICY public posts Service role manages posts sheetapp_user
+3954; 3256 17049 POLICY public products Service role manages products sheetapp_user
+3955; 3256 17050 POLICY public service_activations Service role manages service activations sheetapp_user
+3956; 3256 17051 POLICY public service_updates Service role manages service updates sheetapp_user
+3957; 3256 17052 POLICY public testimonials Service role manages testimonials sheetapp_user
+3958; 3256 17053 POLICY public transactions Users can view own transactions sheetapp_user
+3876; 0 16457 ROW SECURITY public affiliate_requests sheetapp_user
+3877; 0 16465 ROW SECURITY public bookings sheetapp_user
+3878; 0 16473 ROW SECURITY public categories sheetapp_user
+3879; 0 16480 ROW SECURITY public chapters sheetapp_user
+3880; 0 16487 ROW SECURITY public comments sheetapp_user
+3881; 0 16494 ROW SECURITY public coupons sheetapp_user
+3882; 0 16502 ROW SECURITY public enrollments sheetapp_user
+3883; 0 16510 ROW SECURITY public failed_enrollments sheetapp_user
+3884; 0 16518 ROW SECURITY public feedbacks sheetapp_user
+3885; 0 16526 ROW SECURITY public filters sheetapp_user
+3886; 0 16534 ROW SECURITY public instructors sheetapp_user
+3887; 0 16541 ROW SECURITY public leads sheetapp_user
+3888; 0 16549 ROW SECURITY public lessons sheetapp_user
+3889; 0 16557 ROW SECURITY public notifications sheetapp_user
+3890; 0 16566 ROW SECURITY public order_items sheetapp_user
+3891; 0 16574 ROW SECURITY public orders sheetapp_user
+3892; 0 16583 ROW SECURITY public partners sheetapp_user
+3893; 0 16592 ROW SECURITY public post_categories sheetapp_user
+3894; 0 16599 ROW SECURITY public posts sheetapp_user
+3895; 0 16609 ROW SECURITY public product_benefits sheetapp_user
+3896; 0 16618 ROW SECURITY public product_deployment_steps sheetapp_user
+3897; 0 16626 ROW SECURITY public product_experts sheetapp_user
+3898; 0 16635 ROW SECURITY public product_features sheetapp_user
+3899; 0 16644 ROW SECURITY public product_pricing_tiers sheetapp_user
+3900; 0 16658 ROW SECURITY public product_requirements sheetapp_user
+3901; 0 16668 ROW SECURITY public products sheetapp_user
+3902; 0 16683 ROW SECURITY public profiles sheetapp_user
+3903; 0 16692 ROW SECURITY public service_activations sheetapp_user
+3904; 0 16701 ROW SECURITY public service_updates sheetapp_user
+3905; 0 16708 ROW SECURITY public testimonials sheetapp_user
+3906; 0 16717 ROW SECURITY public tier_feature_values sheetapp_user
+3907; 0 16726 ROW SECURITY public transactions sheetapp_user

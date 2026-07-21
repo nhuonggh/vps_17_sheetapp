@@ -39,6 +39,9 @@ yarn-error.log*
 # ops docs that may contain real secrets while being written (see Constitution Principle IV)
 /roadmaps/
 
+# raw production DB dumps (real customer PII: email/phone) — never commit
+/db/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
