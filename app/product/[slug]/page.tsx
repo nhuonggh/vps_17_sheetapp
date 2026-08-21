@@ -178,7 +178,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                              <UserCheck className="w-8 h-8 text-purple-500 bg-purple-50 p-1.5 rounded-lg" />
                              <div>
                                 <div className="font-bold text-sm text-gray-900">Tài khoản</div>
-                                <div className="text-xs text-gray-500">{isService ? 'Google / Zalo ID' : 'Gmail, AppSheet, Supabase'}</div>
+                                <div className="text-xs text-gray-500">{isService ? 'Google / Zalo ID' : 'Gmail, AppSheet'}</div>
                              </div>
                          </div>
                      </div>

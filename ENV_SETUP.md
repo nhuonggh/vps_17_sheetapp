@@ -6,19 +6,23 @@ Copy the following to your `.env.local` file:
 
 ```bash
 # ==========================================
-# SUPABASE CONFIGURATION
+# DATABASE (self-hosted Postgres — no Supabase)
 # ==========================================
 
-# Public URL - Safe to expose to browser
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url_here
+DATABASE_URL=postgresql://sheetapp_user:your_db_password@localhost:5432/sheetapp_db
 
-# Public Anon Key - ONLY for auth, safe to expose
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+# ==========================================
+# AUTH (custom Google OAuth2 + self-issued JWT)
+# ==========================================
 
-# Server-Only Keys - NEVER expose these to browser!
-# Get from: Supabase Dashboard → Settings → API → service_role key
-SUPABASE_URL=your_supabase_project_url_here
-SUPABASE_SERVICE_KEY=your_supabase_service_role_key_here
+# Get from: https://console.cloud.google.com → APIs & Services → Credentials
+GOOGLE_CLIENT_ID=your_google_oauth_client_id_here
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_oauth_client_id_here
+# GOOGLE_CLIENT_SECRET is unused by the current Google Identity Services sign-in flow —
+# only needed if a server-side OAuth exchange is added later.
+
+# Random 256-bit secret for signing session JWTs — e.g. `openssl rand -base64 32`
+JWT_SECRET=your_random_256_bit_secret_here
 
 # ==========================================
 # UPSTASH REDIS (Rate Limiting)
@@ -99,15 +103,17 @@ NODE_ENV=production
 5. Copy Site Key → `NEXT_PUBLIC_RECAPTCHA_SITE_KEY`
 6. Copy Secret Key → `RECAPTCHA_SECRET_KEY`
 
-### 3. Supabase Configuration
-1. Go to Supabase Dashboard → Settings → API
-2. Copy Project URL → `SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_URL`
-3. Copy anon/public key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-4. Copy service_role key → `SUPABASE_SERVICE_KEY` (⚠️ Keep secret!)
+### 3. Google OAuth Setup
+1. Go to https://console.cloud.google.com → APIs & Services → Credentials
+2. Create an OAuth 2.0 Client ID (Web application)
+3. Add your domain(s) to Authorized JavaScript origins
+4. Copy Client ID → `GOOGLE_CLIENT_ID` and `NEXT_PUBLIC_GOOGLE_CLIENT_ID`
 
 ## Security Notes
 
-1. **NEVER** commit `.env.local` to git
+1. **NEVER** commit `.env` to git
 2. Variables with `NEXT_PUBLIC_` prefix are exposed to browser
 3. Server-only variables (no prefix) stay secure on server
-4. For Vercel deployment, add all variables in project settings
+4. Deployment is self-hosted (Docker + Caddy on the project's own VPS, GitHub Actions
+   CI/CD) — not Vercel. Set variables as GitHub Actions secrets / server-side `.env`, not
+   in a Vercel project.
