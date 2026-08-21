@@ -136,13 +136,13 @@ function setupScriptProperties() {
   const credentials = {
     // Supabase (từ .env.local)
     SUPABASE_URL: 'https://ayxnsrolwacldyzcfjuq.supabase.co',
-    SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5eG5zcm9sd2FjbGR5emNmanVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY0NjgzMDQsImV4cCI6MjA4MjA0NDMwNH0.YI9iWDpg3zYkVsPRhs-re7k_0270l2cwXdEEIdognuY',
+    SUPABASE_ANON_KEY: '[REDACTED_ROTATE_SUPABASE_ANON_KEY]',
     SUPABASE_SERVICE_KEY: 'sb_secret_RUXtmH0HCujXUE4wvCXS2A_tZKtCvdZ',
     
     // PayOS (từ .env.local)
-    PAYOS_CLIENT_ID: '1439988e-4729-42ce-a04b-5d609f063ec0',
-    PAYOS_API_KEY: "78d0e6d6-e293-4b4c-9865-c76e128b6ed7",
-    PAYOS_CHECKSUM_KEY: '0c730595762e694b32561037cac5cefd2843ece4319034b5bd69a1979a31c593',
+    PAYOS_CLIENT_ID: '[REDACTED_ROTATE_PAYOS_CLIENT_ID]',
+    PAYOS_API_KEY: "[REDACTED_ROTATE_PAYOS_API_KEY]",
+    PAYOS_CHECKSUM_KEY: '[REDACTED_ROTATE_PAYOS_CHECKSUM_KEY]',
     
     // Google Chat (optional - để nhận alerts)
     GCHAT_WEBHOOK_URL: 'https://chat.googleapis.com/v1/spaces/AAQAkqyeNZc/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=ywi28gfSeMpUoNDRlJCvefxNtkGtvtT734xdvf7-x10'

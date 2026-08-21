@@ -50,6 +50,27 @@ PAYOS_API_KEY=your_payos_api_key_here
 PAYOS_CHECKSUM_KEY=your_payos_checksum_key_here
 
 # ==========================================
+# SEPAY PAYMENT CHANNEL (Webhook + VietQR)
+# ==========================================
+
+# Which gateway is live — ops decides, not the customer. "payos" (default) or "sepay".
+PAYMENT_PROVIDER=payos
+
+# Bank account linked to SePay at my.sepay.vn -> Tài khoản ngân hàng.
+# SEPAY_BANK_NAME must match a bank short_name/alias/code from https://vietqr.app/banks.json (e.g. MBBank, Vietcombank).
+SEPAY_BANK_NAME=your_bank_short_name_here
+SEPAY_ACCOUNT_NUMBER=your_bank_account_number_here
+SEPAY_ACCOUNT_HOLDER=YOUR_ACCOUNT_HOLDER_NAME_NO_DIACRITICS
+
+# Prefix for the payment code embedded in the QR transfer content (e.g. "DH" -> "DH1755000000").
+# Must match the prefix configured at my.sepay.vn -> Cấu hình Công ty -> Cấu trúc mã thanh toán.
+SEPAY_PAYMENT_CODE_PREFIX=DH
+
+# HMAC-SHA256 secret from my.sepay.vn -> Webhooks -> (webhook) -> Bảo mật -> HMAC-SHA256.
+# Webhook URL to register there: https://<your-domain>/api/payment/sepay-webhook
+SEPAY_WEBHOOK_SECRET=your_sepay_webhook_hmac_secret_here
+
+# ==========================================
 # APPLICATION SETTINGS
 # ==========================================
 

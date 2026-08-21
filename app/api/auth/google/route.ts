@@ -34,21 +34,19 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        // Không có UNIQUE constraint trên email (xác nhận qua audit DB) — tự chống trùng
-        // bằng SELECT-trước-INSERT thay vì dựa vào DB constraint (data-model.md).
-        const existing = await query<ProfileRow>('SELECT id, role FROM profiles WHERE email = $1', [identity.email]);
-
-        let profile = existing.rows[0];
-
-        if (!profile) {
-            const inserted = await query<ProfileRow>(
-                `INSERT INTO profiles (id, email, name, full_name, avatar_url, role, created_via)
-                 VALUES (gen_random_uuid(), $1, $2, $2, $3, 'customer', 'google')
-                 RETURNING id, role`,
-                [identity.email, identity.name, identity.picture]
-            );
-            profile = inserted.rows[0];
-        }
+        // profiles.email has a UNIQUE constraint (migrations/20260821_add_profiles_email_unique.sql).
+        // Atomic upsert instead of SELECT-then-INSERT — closes the TOCTOU window where a double
+        // Google Sign-In click / two tabs could race past the SELECT and both INSERT, producing
+        // two profile rows with the same email but different ids.
+        const upserted = await query<ProfileRow>(
+            `INSERT INTO profiles (id, email, name, full_name, avatar_url, role, created_via)
+             VALUES (gen_random_uuid(), $1, $2, $2, $3, 'customer', 'google')
+             ON CONFLICT (email) DO UPDATE
+               SET name = EXCLUDED.name, full_name = EXCLUDED.full_name, avatar_url = EXCLUDED.avatar_url
+             RETURNING id, role`,
+            [identity.email, identity.name, identity.picture]
+        );
+        const profile = upserted.rows[0];
 
         const token = signSession({ sub: profile.id, email: identity.email, role: profile.role ?? 'customer' });
 

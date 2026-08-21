@@ -159,7 +159,7 @@ const credentials = {
   SUPABASE_SERVICE_KEY: 'eyJhbGc...', // ← THAY ĐỔI
   
   // PayOS (từ .env.local)
-  PAYOS_CLIENT_ID: '1439988e-4729-42ce-a04b-5d609f063ec0',
+  PAYOS_CLIENT_ID: '[REDACTED_ROTATE_PAYOS_CLIENT_ID]',
   PAYOS_CHECKSUM_KEY: '0c730595762e694b32561037cac5cefd...', // ← THAY ĐỔI
   
   // Google Chat webhook (optional)

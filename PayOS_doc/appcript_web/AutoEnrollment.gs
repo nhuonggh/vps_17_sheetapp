@@ -35,14 +35,14 @@ function setupScriptProperties() {
     SUPABASE_URL: 'https://ayxnsrolwacldyzcfjuq.supabase.co',
     
     // ANON KEY (Public - role: anon)
-    SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5eG5zcm9sd2FjbGR5emNmanVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY0NjgzMDQsImV4cCI6MjA4MjA0NDMwNH0.YI9iWDpg3zYkVsPRhs-re7k_0270l2cwXdEEIdognuY',
+    SUPABASE_ANON_KEY: '[REDACTED_ROTATE_SUPABASE_ANON_KEY]',
     
     // SERVICE_ROLE KEY (Secret - role: service_role)
-    SUPABASE_SERVICE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5eG5zcm9sd2FjbGR5emNmanVxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NjQ2ODMwNCwiZXhwIjoyMDgyMDQ0MzA0fQ.0FlnJZLxkuk4bYIdyDI4_80h0z7I6w-HRNTdPnVmNu8',
+    SUPABASE_SERVICE_KEY: '[REDACTED_ROTATE_SUPABASE_SERVICE_KEY]',
     
     // PayOS (từ .env.local)
-    PAYOS_CLIENT_ID: '1439988e-4729-42ce-a04b-5d609f063ec0',
-    PAYOS_CHECKSUM_KEY: '0c730595762e694b32561037cac5cefd2843ece4319034b5bd69a1979a31c593',
+    PAYOS_CLIENT_ID: '[REDACTED_ROTATE_PAYOS_CLIENT_ID]',
+    PAYOS_CHECKSUM_KEY: '[REDACTED_ROTATE_PAYOS_CHECKSUM_KEY]',
     
     // Google Chat (optional - để nhận alerts)
     GCHAT_WEBHOOK_URL: ''

@@ -139,7 +139,7 @@ Sau khi biết method nào đúng, update lại code và **XÓA dòng `return tr
 
 1. **Mở .env.local:**
    ```
-   PAYOS_CHECKSUM_KEY=0c730595762e694b32561037cac5cefd2843ece4319034b5bd69a1979a31c593
+   PAYOS_CHECKSUM_KEY=[REDACTED_ROTATE_PAYOS_CHECKSUM_KEY]
    ```
 
 2. **Verify trong Apps Script:**

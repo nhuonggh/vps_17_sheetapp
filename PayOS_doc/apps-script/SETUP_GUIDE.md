@@ -86,7 +86,7 @@ const credentials = {
   SUPABASE_SERVICE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOi...',
   
   // ========== PAYOS ==========
-  PAYOS_CLIENT_ID: '1439988e-4729-42ce-a04b-5d609f063ec0',
+  PAYOS_CLIENT_ID: '[REDACTED_ROTATE_PAYOS_CLIENT_ID]',
   
   // PAYOS_CHECKSUM_KEY (⚠️ QUAN TRỌNG cho signature verification!)
   PAYOS_CHECKSUM_KEY: '0c730595762e694b32561037cac5cefd...',

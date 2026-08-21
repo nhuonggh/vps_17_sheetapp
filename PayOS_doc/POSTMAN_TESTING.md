@@ -34,8 +34,8 @@ Add these variables:
 |----------|------|---------------|---------------|
 | `base_url` | default | `http://localhost:3000` | `http://localhost:3000` |
 | `ngrok_url` | default | `https://your-ngrok-url.ngrok-free.dev` | (update khi dùng ngrok) |
-| `payos_client_id` | secret | `1439988e-4729-42ce-a04b-5d609f063ec0` | (từ .env.local) |
-| `payos_api_key` | secret | `78d0e6d6-e293-4b4c-9865-c76e128b6ed7` | (từ .env.local) |
+| `payos_client_id` | secret | `[REDACTED_ROTATE_PAYOS_CLIENT_ID]` | (từ .env.local) |
+| `payos_api_key` | secret | `[REDACTED_ROTATE_PAYOS_API_KEY]` | (từ .env.local) |
 | `payos_checksum_key` | secret | `0c730595762e...` | (từ .env.local) |
 
 **Note**: Lấy values từ file `.env.local`
@@ -329,7 +329,7 @@ Bạn cần:
 **Check**:
 ```typescript
 // In .env.local
-PAYOS_CHECKSUM_KEY=0c730595762e694b32561037cac5cefd2843ece4319034b5bd69a1979a31c593
+PAYOS_CHECKSUM_KEY=[REDACTED_ROTATE_PAYOS_CHECKSUM_KEY]
 ```
 
 ---

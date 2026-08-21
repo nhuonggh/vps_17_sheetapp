@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAuth, UnauthorizedError } from '@/lib/auth/get-current-user';
 import { query } from '@/lib/db';
 import { formRateLimit, getClientIp } from '@/lib/ratelimit';
+import { validateMessage } from '@/lib/validators';
 
 export async function POST(request: Request) {
     try {
@@ -13,13 +14,14 @@ export async function POST(request: Request) {
         const user = await requireAuth();
         const { content, type } = await request.json();
 
-        if (!content || !content.trim()) {
-            return NextResponse.json({ error: 'missing_content' }, { status: 400 });
+        const contentResult = validateMessage(content, 2000);
+        if (!contentResult.valid) {
+            return NextResponse.json({ error: contentResult.error || 'invalid_content' }, { status: 400 });
         }
 
         await query(
             'INSERT INTO feedbacks (user_id, content, type, created_at) VALUES ($1, $2, $3, NOW())',
-            [user.id, content, type ?? 'general']
+            [user.id, contentResult.sanitized, type ?? 'general']
         );
 
         return NextResponse.json({ success: true });

@@ -34,12 +34,16 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        // 3. Check if payment link exists
+        // 3. Non-PayOS orders (SePay VietQR, static bank transfer) don't have a PayOS
+        // payment link to poll — they're confirmed by their own webhook (see
+        // /api/payment/sepay-webhook) or manual reconciliation, not this endpoint. Report
+        // "not paid yet" instead of erroring so the frontend's poll/retry loop still works.
         if (!order.payment_link_id) {
-            return NextResponse.json(
-                { success: false, error: 'No payment link found' },
-                { status: 400 }
-            );
+            return NextResponse.json({
+                success: true,
+                paid: false,
+                message: 'Payment not yet detected. Please wait a moment.',
+            });
         }
 
         // 4. Query PayOS for payment status

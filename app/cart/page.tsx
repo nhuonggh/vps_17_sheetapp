@@ -1,69 +1,16 @@
 'use client';
 
 import { useCart } from '@/context/CartContext';
-import { Trash2, ShoppingCart, ArrowLeft, Minus, Plus, Tag } from 'lucide-react';
+import { Trash2, ShoppingCart, ArrowLeft, Minus, Plus } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function CartPage() {
     const { items, removeItem, clearCart, updateQuantity, totalAmount, totalItems } = useCart();
     const router = useRouter();
-    const [discountCode, setDiscountCode] = useState('');
-    const [appliedDiscount, setAppliedDiscount] = useState(0);
-    const [isCheckingOut, setIsCheckingOut] = useState(false);
-    const [checkoutData, setCheckoutData] = useState({
-        name: '',
-        email: '',
-        phone: '',
-    });
 
     const formatPrice = (price: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
-
-    const handleApplyDiscount = () => {
-        const discounts: Record<string, number> = { 'SAVE10': 0.1, 'SAVE20': 0.2, 'VIP50': 0.5 };
-        const code = discountCode.toUpperCase().trim();
-        setAppliedDiscount(discounts[code] || 0);
-    };
-
-    const discountAmount = totalAmount * appliedDiscount;
-    const finalTotal = totalAmount - discountAmount;
-
-    const handleCheckout = async () => {
-        if (!checkoutData.name || !checkoutData.email || !checkoutData.phone) {
-            alert('Vui lòng điền đầy đủ thông tin thanh toán');
-            return;
-        }
-
-        setIsCheckingOut(true);
-        try {
-            const response = await fetch('/api/checkout', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    items: items.map(item => ({
-                        product_id: item.id,
-                        quantity: item.quantity
-                    })),
-                    customer: checkoutData,
-                }),
-            });
-
-            const data = await response.json();
-            if (data.success && data.order.paymentUrl) {
-                // Redirect to PayOS payment page
-                window.location.href = data.order.paymentUrl;
-            } else {
-                alert('Lỗi tạo thanh toán: ' + (data.error || 'Unknown error'));
-            }
-        } catch (error) {
-            console.error('Checkout error:', error);
-            alert('Lỗi kết nối. Vui lòng thử lại!');
-        } finally {
-            setIsCheckingOut(false);
-        }
-    };
 
     if (items.length === 0) {
         return (
@@ -132,41 +79,9 @@ export default function CartPage() {
                                     <span className="font-semibold">{formatPrice(totalAmount)}</span>
                                 </div>
 
-                                {/* Discount Code */}
-                                <div className="border-t pt-4">
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <Tag className="w-4 h-4 text-emerald-600" />
-                                        <span className="font-semibold text-gray-700">Mã giảm giá</span>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <input
-                                            value={discountCode}
-                                            onChange={(e) => setDiscountCode(e.target.value)}
-                                            placeholder="SAVE10, SAVE20, VIP50"
-                                            className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-emerald-500 focus:outline-none text-sm"
-                                        />
-                                        <button
-                                            onClick={handleApplyDiscount}
-                                            className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-colors font-semibold text-sm whitespace-nowrap"
-                                        >
-                                            Áp dụng
-                                        </button>
-                                    </div>
-                                    {appliedDiscount > 0 && (
-                                        <p className="text-emerald-600 text-sm mt-2">✓ Giảm {appliedDiscount * 100}%</p>
-                                    )}
-                                </div>
-
-                                {appliedDiscount > 0 && (
-                                    <div className="flex justify-between text-emerald-600">
-                                        <span>Giảm giá ({appliedDiscount * 100}%)</span>
-                                        <span className="font-semibold">-{formatPrice(discountAmount)}</span>
-                                    </div>
-                                )}
-
                                 <div className="border-t pt-4 flex justify-between text-xl font-bold">
                                     <span className="text-gray-900">Tổng cộng</span>
-                                    <span className="text-emerald-600">{formatPrice(finalTotal)}</span>
+                                    <span className="text-emerald-600">{formatPrice(totalAmount)}</span>
                                 </div>
                             </div>
                         </div>

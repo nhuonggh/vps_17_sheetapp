@@ -250,7 +250,7 @@ function verifyChecksumKey() {
   Logger.log(`   Last 20 chars: ...${key.substring(key.length - 20)}`);
   
   // Expected from .env.local
-  const expectedKey = '0c730595762e694b32561037cac5cefd2843ece4319034b5bd69a1979a31c593';
+  const expectedKey = '[REDACTED_ROTATE_PAYOS_CHECKSUM_KEY]';
   
   if (key === expectedKey) {
     Logger.log('   ✅ Key matches .env.local');

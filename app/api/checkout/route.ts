@@ -3,6 +3,7 @@ import { query, withTransaction } from '@/lib/db';
 import { validateFormInput } from '@/lib/validators';
 import { createPaymentLinkDirect } from '@/lib/payos-direct';
 import { isPayOSConfigured } from '@/lib/payos';
+import { getActivePaymentProvider, isSepayConfigured, generateSepayQrUrl, getSepayPaymentCodePrefix, getSepayBankInfo } from '@/lib/sepay';
 
 /**
  * POST /api/checkout
@@ -123,12 +124,23 @@ export async function POST(request: NextRequest) {
 
         console.log('Creating order:', orderId, 'Total:', totalAmount);
 
-        // Try to create PayOS payment link
+        // Which gateway is live is an ops decision (PAYMENT_PROVIDER env var), not something
+        // the customer picks — see lib/sepay.ts.
+        const activeProvider = getActivePaymentProvider();
+
         let paymentLinkData: any = null;
         let qrCode: string | null = null;
-        let payosOrderCode: number | null = null; // ✅ Store orderCode for database
+        let payosOrderCode: number | null = null;
+        let sepayPaymentCode: string | null = null;
+        let bankTransferInfo: { bankName: string; accountNumber: string; accountHolder: string } | null = null;
 
-        if (isPayOSConfigured()) {
+        if (activeProvider === 'sepay' && isSepayConfigured()) {
+            console.log('✅ SePay active — generating VietQR...');
+            const sepayOrderCode = Math.floor(Date.now() / 1000);
+            sepayPaymentCode = `${getSepayPaymentCodePrefix()}${sepayOrderCode}`;
+            qrCode = generateSepayQrUrl({ amount: totalAmount, paymentCode: sepayPaymentCode });
+            bankTransferInfo = getSepayBankInfo();
+        } else if (activeProvider === 'payos' && isPayOSConfigured()) {
             console.log('✅ PayOS configured - creating payment link via direct API...');
 
             // Use Unix timestamp as orderCode (required integer by PayOS)
@@ -161,11 +173,11 @@ export async function POST(request: NextRequest) {
                 console.warn('⚠️ PayOS payment link creation failed, falling back to static QR:', paymentResult.error);
             }
         } else {
-            console.warn('⚠️ PayOS not configured, using static QR code');
+            console.warn(`⚠️ Active provider "${activeProvider}" not configured, using static QR code`);
         }
 
-        // Fallback to static QR if PayOS failed or not configured
-        if (!paymentLinkData) {
+        // Last-resort fallback if the active provider failed or nothing is configured at all
+        if (!paymentLinkData && !qrCode) {
             qrCode = generatePaymentQR(orderId, totalAmount);
             console.log('Using static VietQR code');
         }
@@ -177,15 +189,16 @@ export async function POST(request: NextRequest) {
         let order: any;
         try {
             order = await withTransaction(async (client) => {
+                const paymentMethod = paymentLinkData ? 'payos' : sepayPaymentCode ? 'sepay' : 'bank_transfer';
                 const orderResult = await client.query(
                     `INSERT INTO orders (
                         id, order_id, user_id, customer_email, customer_name, customer_phone,
                         total_amount, status, payment_qr_code, payment_method, payment_link_id,
-                        payment_url, payment_expires_at, payos_order_code, created_at
+                        payment_url, payment_expires_at, payos_order_code, sepay_payment_code, created_at
                     ) VALUES (
                         gen_random_uuid(), $1, NULL, $2, $3, $4,
                         $5, 'pending', $6, $7, $8,
-                        $9, $10, $11, NOW()
+                        $9, $10, $11, $12, NOW()
                     ) RETURNING *`,
                     [
                         orderId,
@@ -194,11 +207,12 @@ export async function POST(request: NextRequest) {
                         validation.sanitized.phone,
                         totalAmount,
                         qrCode,
-                        paymentLinkData ? 'payos' : 'bank_transfer',
+                        paymentMethod,
                         paymentLinkData?.paymentLinkId || null,
                         paymentLinkData?.checkoutUrl || null,
-                        paymentLinkData ? new Date(Date.now() + 15 * 60 * 1000).toISOString() : null,
+                        (paymentLinkData || sepayPaymentCode) ? new Date(Date.now() + 15 * 60 * 1000).toISOString() : null,
                         payosOrderCode,
+                        sepayPaymentCode,
                     ]
                 );
                 const createdOrder = orderResult.rows[0];
@@ -230,8 +244,10 @@ export async function POST(request: NextRequest) {
                 id: order.order_id,
                 totalAmount,
                 items: validatedItems,
-                qrCode, // PayOS QR or static VietQR
+                qrCode, // PayOS QR, SePay VietQR, or static VietQR fallback
                 paymentUrl: order.payment_url, // PayOS checkout URL (if available)
+                paymentCode: sepayPaymentCode || order.order_id, // what the customer types as transfer content
+                bankInfo: bankTransferInfo, // set when SePay is the active provider
                 expiresAt: order.payment_expires_at,
                 status: 'pending',
             },

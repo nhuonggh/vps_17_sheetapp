@@ -69,15 +69,15 @@
 **Already in .env.local (need to add to Vercel):**
 
 1. `PAYOS_CLIENT_ID`
-   - Value: `1439988e-4729-42ce-a04b-5d609f063ec0`
+   - Value: `[REDACTED_ROTATE_PAYOS_CLIENT_ID]`
    - Environment: Production, Preview, Development
 
 2. `PAYOS_API_KEY`
-   - Value: `78d0e6d6-e293-4b4c-9865-c76e128b6ed7`
+   - Value: `[REDACTED_ROTATE_PAYOS_API_KEY]`
    - Environment: Production, Preview, Development
 
 3. `PAYOS_CHECKSUM_KEY`
-   - Value: `0c730595762e694b32561037cac5cefd2843ece4319034b5bd69a1979a31c593`
+   - Value: `[REDACTED_ROTATE_PAYOS_CHECKSUM_KEY]`
    - Environment: Production, Preview, Development
 
 4. `NEXT_PUBLIC_BASE_URL`

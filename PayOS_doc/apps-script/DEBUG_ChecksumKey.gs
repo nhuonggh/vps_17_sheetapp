@@ -40,9 +40,9 @@ function debugShowScriptProperties() {
     Logger.log(`   Full value: ${checksumKey}`);
     Logger.log('');
     Logger.log('📝 EXPECTED from .env.local:');
-    Logger.log('   0c730595762e694b32561037cac5cefd2843ece4319034b5bd69a1979a31c593');
+    Logger.log('   [REDACTED_ROTATE_PAYOS_CHECKSUM_KEY]');
     Logger.log('');
-    Logger.log(`   Match? ${checksumKey === '0c730595762e694b32561037cac5cefd2843ece4319034b5bd69a1979a31c593' ? '✅ YES' : '❌ NO'}`);
+    Logger.log(`   Match? ${checksumKey === '[REDACTED_ROTATE_PAYOS_CHECKSUM_KEY]' ? '✅ YES' : '❌ NO'}`);
   }
 }
 
@@ -56,7 +56,7 @@ function testHMACCalculationDirect() {
   const expectedSignature = '23fbd5e1b3cc99978a10d11a8049f6c43df9d25dc91880aeda1113cafe976d44';
   
   // Test with EXPECTED checksum key from .env.local
-  const correctKey = '0c730595762e694b32561037cac5cefd2843ece4319034b5bd69a1979a31c593';
+  const correctKey = '[REDACTED_ROTATE_PAYOS_CHECKSUM_KEY]';
   
   Logger.log('🧪 TESTING HMAC WITH CORRECT KEY');
   Logger.log('='.repeat(60));
@@ -102,7 +102,7 @@ function setupPayOSChecksumKey() {
   const props = PropertiesService.getScriptProperties();
   
   // ✅ CORRECT value from .env.local
-  const correctChecksumKey = '0c730595762e694b32561037cac5cefd2843ece4319034b5bd69a1979a31c593';
+  const correctChecksumKey = '[REDACTED_ROTATE_PAYOS_CHECKSUM_KEY]';
   
   props.setProperty('PAYOS_CHECKSUM_KEY', correctChecksumKey);
   

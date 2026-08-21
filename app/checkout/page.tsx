@@ -334,7 +334,7 @@ export default function CheckoutPage() {
                                     <div className="bg-white rounded-lg p-3 border border-emerald-200">
                                         <label className="text-xs text-gray-600 block mb-1">Ngân hàng</label>
                                         <div className="flex items-center justify-between gap-2">
-                                            <span className="font-semibold text-gray-900">MBBank - Ngân hàng TMCP Quân đội (Chi nhánh Hóc Môn)</span>
+                                            <span className="font-semibold text-gray-900">{orderData.bankInfo?.bankName || 'MBBank - Ngân hàng TMCP Quân đội (Chi nhánh Hóc Môn)'}</span>
                                         </div>
                                     </div>
 
@@ -342,10 +342,11 @@ export default function CheckoutPage() {
                                     <div className="bg-white rounded-lg p-3 border border-emerald-200">
                                         <label className="text-xs text-gray-600 block mb-1">Số tài khoản</label>
                                         <div className="flex items-center justify-between gap-2">
-                                            <span className="font-mono font-bold text-lg text-gray-900">0987726236</span>
+                                            <span className="font-mono font-bold text-lg text-gray-900">{orderData.bankInfo?.accountNumber || '0987726236'}</span>
                                             <button
                                                 onClick={() => {
-                                                    navigator.clipboard.writeText('0987726236');
+                                                    const acc = orderData.bankInfo?.accountNumber || '0987726236';
+                                                    navigator.clipboard.writeText(acc);
                                                     alert('Đã copy số tài khoản!');
                                                 }}
                                                 className="px-3 py-1.5 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700 transition-colors whitespace-nowrap"
@@ -359,10 +360,11 @@ export default function CheckoutPage() {
                                     <div className="bg-white rounded-lg p-3 border border-emerald-200">
                                         <label className="text-xs text-gray-600 block mb-1">Chủ tài khoản</label>
                                         <div className="flex items-center justify-between gap-2">
-                                            <span className="font-semibold text-gray-900">VO TAN NHUONG</span>
+                                            <span className="font-semibold text-gray-900">{orderData.bankInfo?.accountHolder || 'VO TAN NHUONG'}</span>
                                             <button
                                                 onClick={() => {
-                                                    navigator.clipboard.writeText('VO TAN NHUONG');
+                                                    const holder = orderData.bankInfo?.accountHolder || 'VO TAN NHUONG';
+                                                    navigator.clipboard.writeText(holder);
                                                     alert('Đã copy tên tài khoản!');
                                                 }}
                                                 className="px-3 py-1.5 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700 transition-colors whitespace-nowrap"
@@ -393,10 +395,11 @@ export default function CheckoutPage() {
                                     <div className="bg-white rounded-lg p-3 border border-emerald-200">
                                         <label className="text-xs text-gray-600 block mb-1">Nội dung chuyển khoản</label>
                                         <div className="flex items-center justify-between gap-2">
-                                            <span className="font-mono font-semibold text-gray-900">{orderData.id}</span>
+                                            <span className="font-mono font-semibold text-gray-900">{orderData.paymentCode || orderData.id}</span>
                                             <button
                                                 onClick={() => {
-                                                    navigator.clipboard.writeText(orderData.id);
+                                                    const code = orderData.paymentCode || orderData.id;
+                                                    navigator.clipboard.writeText(code);
                                                     alert('Đã copy nội dung chuyển khoản!');
                                                 }}
                                                 className="px-3 py-1.5 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700 transition-colors whitespace-nowrap"
@@ -422,7 +425,7 @@ export default function CheckoutPage() {
                             {/* Important Note */}
                             <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4 mb-6">
                                 <p className="text-yellow-900 text-sm font-medium">
-                                    ⚠️ <strong>LƯU Ý QUAN TRỌNG:</strong> Vui lòng nhập chính xác nội dung chuyển khoản <span className="font-mono bg-yellow-100 px-2 py-0.5 rounded">{orderData.id}</span> để hệ thống tự động xác nhận thanh toán.
+                                    ⚠️ <strong>LƯU Ý QUAN TRỌNG:</strong> Vui lòng nhập chính xác nội dung chuyển khoản <span className="font-mono bg-yellow-100 px-2 py-0.5 rounded">{orderData.paymentCode || orderData.id}</span> để hệ thống tự động xác nhận thanh toán.
                                 </p>
                             </div>
 
